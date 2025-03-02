@@ -1,0 +1,195 @@
+SCRIPT    (W): EditBoxFilterComponent used on invalid widget type.
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 0, Chance: 0.05, Roll: 51.1399
+SCRIPT       : [GameModeJamming] Incremented to: 1 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 1, Chance: 0.05005, Roll: 97.9919
+SCRIPT       : [GameModeJamming] Incremented to: 2 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 2, Chance: 0.0501, Roll: 17.3223
+SCRIPT       : [GameModeJamming] Incremented to: 3 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 3, Chance: 0.05015, Roll: 47.5753
+SCRIPT       : [GameModeJamming] Incremented to: 4 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 4, Chance: 0.0502, Roll: 38.319
+SCRIPT       : [GameModeJamming] Incremented to: 5 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 5, Chance: 0.05025, Roll: 32.8776
+SCRIPT       : [GameModeJamming] Incremented to: 6 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 6, Chance: 0.0503, Roll: 64.9922
+SCRIPT       : [GameModeJamming] Incremented to: 7 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 7, Chance: 0.05035, Roll: 22.7851
+SCRIPT       : [GameModeJamming] Incremented to: 8 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 8, Chance: 0.0504, Roll: 32.4747
+SCRIPT       : [GameModeJamming] Incremented to: 9 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 9, Chance: 0.05045, Roll: 67.806
+SCRIPT       : [GameModeJamming] Incremented to: 10 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 10, Chance: 0.0505, Roll: 77.7459
+SCRIPT       : [GameModeJamming] Incremented to: 11 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 11, Chance: 0.05055, Roll: 22.7515
+SCRIPT       : [GameModeJamming] Incremented to: 12 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 12, Chance: 0.0506, Roll: 45.4115
+SCRIPT       : [GameModeJamming] Incremented to: 13 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 13, Chance: 0.05065, Roll: 7.84326
+SCRIPT       : [GameModeJamming] Incremented to: 14 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 14, Chance: 0.0507, Roll: 68.92
+SCRIPT       : [GameModeJamming] Incremented to: 15 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 15, Chance: 0.05075, Roll: 71.7948
+SCRIPT       : [GameModeJamming] Incremented to: 16 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 16, Chance: 0.0508, Roll: 61.269
+SCRIPT       : [GameModeJamming] Incremented to: 17 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 17, Chance: 0.05085, Roll: 79.342
+SCRIPT       : [GameModeJamming] Incremented to: 18 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 18, Chance: 0.0509, Roll: 73.2109
+SCRIPT       : [GameModeJamming] Incremented to: 19 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 19, Chance: 0.05095, Roll: 74.6483
+SCRIPT       : [GameModeJamming] Incremented to: 20 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 20, Chance: 0.051, Roll: 89.3216
+SCRIPT       : [GameModeJamming] Incremented to: 21 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 21, Chance: 0.05105, Roll: 34.0098
+SCRIPT       : [GameModeJamming] Incremented to: 22 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 22, Chance: 0.0511, Roll: 46.849
+SCRIPT       : [GameModeJamming] Incremented to: 23 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 23, Chance: 0.05115, Roll: 78.4936
+SCRIPT       : [GameModeJamming] Incremented to: 24 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 24, Chance: 0.0512, Roll: 90.405
+SCRIPT       : [GameModeJamming] Incremented to: 25 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 25, Chance: 0.05125, Roll: 32.1574
+SCRIPT       : [GameModeJamming] Incremented to: 26 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 26, Chance: 0.0513, Roll: 30.4453
+SCRIPT       : [GameModeJamming] Incremented to: 27 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 27, Chance: 0.05135, Roll: 46.9039
+SCRIPT       : [GameModeJamming] Incremented to: 28 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 28, Chance: 0.0514, Roll: 67.6046
+SCRIPT       : [GameModeJamming] Incremented to: 29 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 29, Chance: 0.05145, Roll: 33.1248
+SCRIPT       : [GameModeJamming] Incremented to: 30 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 30, Chance: 0.0515, Roll: 90.1669
+SCRIPT       : [GameModeJamming] Incremented to: 31 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 31, Chance: 0.05155, Roll: 98.8159
+SCRIPT       : [GameModeJamming] Incremented to: 32 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 32, Chance: 0.0516, Roll: 61.8336
+SCRIPT       : [GameModeJamming] Incremented to: 33 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 33, Chance: 0.05165, Roll: 71.0837
+SCRIPT       : [GameModeJamming] Incremented to: 34 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 34, Chance: 0.0517, Roll: 2.85043
+SCRIPT       : [GameModeJamming] Incremented to: 35 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 35, Chance: 0.05175, Roll: 15.656
+SCRIPT       : [GameModeJamming] Incremented to: 36 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 36, Chance: 0.0518, Roll: 42.8846
+SCRIPT       : [GameModeJamming] Incremented to: 37 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 37, Chance: 0.05185, Roll: 44.2915
+SCRIPT       : [GameModeJamming] Incremented to: 38 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 38, Chance: 0.0519, Roll: 0.708029
+SCRIPT       : [GameModeJamming] Incremented to: 39 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 39, Chance: 0.05195, Roll: 69.808
+SCRIPT       : [GameModeJamming] Incremented to: 40 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 40, Chance: 0.052, Roll: 36.668
+SCRIPT       : [GameModeJamming] Incremented to: 41 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 41, Chance: 0.05205, Roll: 95.9899
+SCRIPT       : [GameModeJamming] Incremented to: 42 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 42, Chance: 0.0521, Roll: 41.2
+SCRIPT       : [GameModeJamming] Incremented to: 43 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 43, Chance: 0.05215, Roll: 77.4163
+SCRIPT       : [GameModeJamming] Incremented to: 44 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 44, Chance: 0.0522, Roll: 79.162
+SCRIPT       : [GameModeJamming] Incremented to: 45 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 45, Chance: 0.05225, Roll: 14.9724
+SCRIPT       : [GameModeJamming] Incremented to: 46 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 46, Chance: 0.0523, Roll: 17.7374
+SCRIPT       : [GameModeJamming] Incremented to: 47 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 47, Chance: 0.05235, Roll: 28.7851
+SCRIPT       : [GameModeJamming] Incremented to: 48 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 48, Chance: 0.0524, Roll: 37.7544
+SCRIPT       : [GameModeJamming] Incremented to: 49 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 49, Chance: 0.05245, Roll: 34.0587
+SCRIPT       : [GameModeJamming] Incremented to: 50 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 50, Chance: 0.0525, Roll: 76.8456
+SCRIPT       : [GameModeJamming] Incremented to: 51 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 51, Chance: 0.05255, Roll: 99.4476
+SCRIPT       : [GameModeJamming] Incremented to: 52 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 52, Chance: 0.0526, Roll: 90.6339
+SCRIPT       : [GameModeJamming] Incremented to: 53 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 53, Chance: 0.05265, Roll: 54.5061
+SCRIPT       : [GameModeJamming] Incremented to: 54 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 54, Chance: 0.0527, Roll: 57.3717
+SCRIPT       : [GameModeJamming] Incremented to: 55 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 55, Chance: 0.05275, Roll: 94.9553
+SCRIPT       : [GameModeJamming] Incremented to: 56 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 56, Chance: 0.0528, Roll: 4.73952
+SCRIPT       : [GameModeJamming] Incremented to: 57 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 57, Chance: 0.05285, Roll: 74.5415
+SCRIPT       : [GameModeJamming] Incremented to: 58 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 58, Chance: 0.0529, Roll: 17.4169
+SCRIPT       : [GameModeJamming] Incremented to: 59 for player 1 on
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 59, Chance: 0.05295, Roll: 32.6731
+SCRIPT       : [GameModeJamming] Incremented to: 60 for player 1 on
+SCRIPT       : [CleaningStation] Shot Count: 60 for player 1
+SCRIPT       : [CleaningStation] Shot Count: 60 for player 1
+SCRIPT       : [CleaningStation] Shot Count: 60 for player 1
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 60, Chance: 0.053, Roll: 3.0427
+SCRIPT       : [GameModeJamming] Incremented to: 61 for player 1 on
+SCRIPT       : [CleaningKit] Shot Count: 61 for player 1
+SCRIPT       : [CleaningKit] Shot Count: 61 for player 1
+SCRIPT       : [CleaningKit] Shot Count: 61 for player 1
+SCRIPT       : [GameModeJamming] Fired:
+SCRIPT       : [GameModeJamming] Shot: 61, Chance: 0.05305, Roll: 50.1206
+SCRIPT       : [GameModeJamming] Incremented to: 62 for player 1 on
+SCRIPT       : [CleaningKit] Shot Count: 62 for player 1
+SCRIPT       : [CleaningStation] Shot Count: 62 for player 1

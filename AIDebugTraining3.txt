@@ -1,0 +1,2343 @@
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Types
+\{
+*/
+
+sealed class typename
+{
+	private void typename();
+	private void ~typename();
+
+	const static typename Empty;
+
+	//!Returns type name of variable as string
+	proto external string ToString();
+	/*!
+	Returns true when type is the same as 'baseType', or inherited one.
+	\param baseType typename
+	\returns \p bool true when type is the same as 'baseType', or inherited one.
+	\code
+		???
+	\endcode
+	*/
+	proto external bool IsInherited(typename baseType);
+	/*!
+	Dynamic variant to `new` keyword. It creates new instance of class.
+	\returns \p instance of class
+	\code
+		???
+	\endcode
+	*/
+	proto external ref Managed Spawn();
+	proto external int GetVariableCount();
+	proto external owned string GetVariableName(int vIdx);
+	proto external typename GetVariableType(int vIdx);
+	proto external bool GetVariableValue(Class var, int vIdx, out void val);
+	/*!
+	Return string name of enum value.
+	\code
+		DialogPriority prio = DialogPriority.WARNING;
+		Print( typename.EnumToString(DialogPriority, prio) );
+	\endcode
+	*/
+	static proto string EnumToString(typename e, int enumValue);
+	/*!
+	Return enum value from string name.
+	\code
+		Print( typename.StringToEnum(DialogPriority, "WARNING") );
+	\endcode
+	*/
+	static proto int StringToEnum(typename e, string enumName);
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Types
+\{
+*/
+
+sealed class vector
+{
+	private void vector();
+	private void ~vector();
+
+	static const vector Up = "0 1 0";
+	static const vector Right = "1 0 0";
+	static const vector Forward = "0 0 1";
+	static const vector Zero = "0 0 0";
+	static const vector One = "1 1 1";
+
+	/*!
+	\brief Normalizes vector.
+		@code
+			vector vec = "1 0 1";
+			vec.Normalize();
+			Print( vec );
+
+			>> vec = <0.707107,0,0.707107>
+		@endcode
+	*/
+	proto external void Normalize();
+	/*!
+	\brief Normalizes vector. Returns its length.
+	\warning Slower than calling Normalize() because additional calculations are necessary. Use Normalize() if the vector length is not needed.
+	\return \p float Length of origin vector
+	@code
+		vector vec = "1 0 1";
+		float length = vec.NormalizeSize();
+		Print( vec );
+		Print( length );
+
+		>> vec = <0.707107,0,0.707107>
+		>> length = 1.41421
+	@endcode
+	*/
+	proto external float NormalizeSize();
+	//! return normalized vector (keeps the orginal vector untouched)
+	proto external vector Normalized();
+	/*!
+	\brief Returns length of vector (magnitude)
+		\return \p float Length of vector
+		@code
+			vector vec = "1 0 1";
+			float length = vec.Length();
+			Print( length );
+
+			>> length = 1.41421
+		@endcode
+	*/
+	proto external float Length();
+	/*!
+	\brief Returns squared length (magnitudeSqr)
+		\return \p float Length of vector
+		@code
+			vector vec = "1 1 0";
+			float length = vec.LengthSq();
+			Print( length );
+
+			>> length = 2
+		@endcode
+	*/
+	proto external float LengthSq();
+	/*!
+	\brief Returns the distance between tips of two 3D vectors.
+		\param v1 \p vector 3D Vector 1
+		\param v2 \p vector 3D Vector 2
+		\return \p float Distance
+		@code
+			float dist = vector.Distance( "1 2 3", "4 5 6" );
+			Print( dist );
+
+			>> dist = 5.19615
+		@endcode
+	*/
+	static proto float Distance(vector v1, vector v2);
+	static proto float DistanceXZ(vector v1, vector v2);
+	/*!
+	\brief Returns the squere distance between tips of two 3D vectors.
+		\param v1 \p vector 3D Vector 1
+		\param v2 \p vector 3D Vector 2
+		\return \p float Squere distance
+		@code
+			float dist = vector.DistanceSq( "0 0 0", "0 5 0" );
+			Print( dist );
+
+			>> dist = 25
+		@endcode
+	*/
+	static proto float DistanceSq(vector v1, vector v2);
+	static proto float DistanceSqXZ(vector v1, vector v2);
+	/*!
+	\brief Returns perpendicular vector. Perpendicular vector is computed as cross product between input vector and up vector (0, 1, 0).
+			\return \p vector perpendicular vector
+		@code
+			vector vec = "1 0 0";
+			Print( vec.Perpend() );
+
+			>> <0,0,1>
+		@endcode
+	*/
+	proto external vector Perpend();
+	/*!
+	\brief Returns direction vector from point p1 to point p2.
+		\warning Output vector is NOT normalized.
+		\param p1 \p vector point from
+		\param p2 \p vector point to
+		\return \p vector direction vector
+	*/
+	static proto vector Direction(vector p1, vector p2);
+	/*!
+	\brief Returns Dot product of vector v1 and vector v2
+			\param v1 \p vector input vector
+		\param v2 \p vector input vector
+		\return \p float dot product
+	*/
+	static proto float Dot(vector v1, vector v2);
+	static proto float DotXZ(vector v1, vector v2);
+	/*!
+	\brief Re-map angles from one range to another.
+		\return \p float re-maped angles
+		@code
+			vector angles = "-45 190 160";
+			Print( angles.MapAngles(360, -Math.PI, Math.PI) );
+
+			>> <-0.785398,-2.96706,2.79253>
+		@endcode
+	*/
+	proto external vector MapAngles(float fFromRange = 360, float fToLow = -180, float fToHigh = 180);
+	/*!
+	Returns yaw of vector (use XZ plane).
+	\return Yaw of vector in degrees
+	\code
+		vector v1 = "1 0 0";
+		vector v2 = "0.7 0 0.7";
+		Print( v1.ToYaw() );
+		Print( v2.ToYaw() );
+
+		>> 90
+		>> 45
+	\endcode
+	*/
+	proto external float ToYaw();
+	/*!
+	\brief Returns vector of yaw (in XZ plane)
+		\param yaw \p float Value of yaw (in degrees)
+		\return \p vector Yaw converted in vector (in XZ plane)
+		@code
+			Print( vector.FromYaw(90) );
+			Print( vector.FromYaw(45) );
+
+			>> <1,0,0>
+			>> <0.707107,0,0.707107>
+		@endcode
+	*/
+	static proto vector FromYaw(float yaw);
+	/*!
+	\brief Converts vector to spherical coordinates with radius = 1
+		\return \p vector spherical coordinates (yaw, pitch, roll in degrees)
+		@code
+			vector v1 = "1 0 1";
+			vector v2 = "1 1 1";
+			Print( v1.VectorToAngles() );
+			Print( v2.VectorToAngles() );
+
+			>> <45,-0,0>
+			>> <45,35.2644,0>
+		@endcode
+	*/
+	proto external vector VectorToAngles();
+	/*!
+	\brief Converts spherical coordinates (yaw, pitch, roll in degrees) to unit length vector
+		\return \p normalized direction vector
+		@code
+			vector v1 = "45 0 0";
+			vector v2 = "15 60 0";
+			Print( v1.AnglesToVector() );
+			Print( v2.AnglesToVector() );
+
+			>> <0.707107,0,0.707107>
+			>> <0.12941,0.866025,0.482963>
+		@endcode
+	*/
+	proto external vector AnglesToVector();
+	/*!
+	\brief Create quaternion from angles (yaw pitch roll in degrees)
+		@code
+					float q[4];
+			vector ang = "70 15 45";
+				ang.QuatFromAngles( q );
+				Print( q );
+
+			>> {-0.316402,0.484465,-0.241626,0.778973}
+		@endcode
+	*/
+	proto external void QuatFromAngles(out float quat[4]);
+	/*!
+	Transforms position.
+	\param mat transformation matrix
+	\return transformed position
+	\code
+		vector mat[4] = { "1 0 0 0", "0 1 0 0", "0 0 1 1", "3 1 2 1" }; // translation matrix
+		vector pos = "1 1 1";
+		Print( pos.Multiply4(mat) );
+
+		>> <4,2,3>
+	\endcode
+	*/
+	proto external vector Multiply4(vector mat[4]);
+	/*!
+	Transforms vector.
+	\param mat transformation matrix
+	\return transformed vector
+	\code
+		vector mat[3] = { "2 0 0", "0 3 0", "0 0 1" }; // scale matrix
+		vector vec = "1 1 1";
+		Print( vec.Multiply3(mat) );
+
+		>> <2,3,1>
+	\endcode
+	*/
+	proto external vector Multiply3(vector mat[3]);
+	/*!
+	Invert-transforms position.
+	\param mat transformation matrix
+	\return transformed position
+	\code
+		vector mat[4] = { "1 0 0 0", "0 1 0 0", "0 0 1 1", "3 1 2 1" }; // translation matrix
+		vector pos = "1 1 1";
+		Print( pos.InvMultiply4(mat) );
+
+		>> <-2,0,-1>
+	\endcode
+	*/
+	proto external vector InvMultiply4(vector mat[4]);
+	/*!
+	Invert-transforms vector.
+	\param mat transformation matrix
+	\return Transformed vector
+	\code
+		vector mat[3] = { "1.5 2.5 0", "0.1 1.3 0", "0 0 1" }; // rotation matrix
+		vector vec = "1 1 1";
+		Print( vec.InvMultiply3(mat) );
+
+		>> <4,1.4,1>
+	\endcode
+	*/
+	proto external vector InvMultiply3(vector mat[3]);
+	/*!
+	\brief Lerp between two vectors
+		@code
+			vector v1 = Vector(0,0,0);
+			vector v2 = Vector(5,6,1);
+			Print( vector.Lerp(v1, v2, 0.5) );
+		@endcode
+	*/
+	static proto vector Lerp(vector v1, vector v2, float t);
+	proto external string ToString(bool beautify = true);
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+#ifdef WORKBENCH
+
+/*!
+\addtogroup WorkbenchAPI
+\{
+*/
+
+sealed class TexTools
+{
+	private void TexTools();
+	private void ~TexTools();
+
+	/*!
+	Save raw pixels (ARGB stored in int) to dds file.
+	Usage:
+	\code
+		string filePath = "c:\\textures\\test.dds";
+		int data[256];
+
+		// generate same gradient
+		for (int x = 0; x < 16; x++)
+		for (int y = 0; y < 16; y++)
+		{
+			int clr = y * 16 + 15;
+			data[x * 16 + y] = ARGB(255, clr, clr, clr);
+		}
+
+		// save dds to file
+		if (TexTools.SaveImageData(filePath, 16, 16, data) == false)
+		{
+			Print("Can't save image", LogLevel.ERROR);
+			return;
+		}
+	\endcode
+	*/
+	static proto bool SaveImageData(string filePath, int width, int height, notnull array<int> data);
+	/*!
+	Repair borders. Real data pictures are from `3,3` to `sizeX-3,sizeY-3`.
+	Rest of the image must be copied due to DXT compression from the border
+	lines -> in 4x4 DXT block must be just four colors, the other reason is
+	the mip-mapping!
+	*/
+	static proto void RepairTerrainTextureBorders(int width, int height, notnull inout array<int> data);
+}
+
+/*!
+\}
+*/
+
+#endif // WORKBENCH
+/*!
+\defgroup Debug Debug utilities
+\{
+*/
+
+//! Prints content of variable to console/log.
+proto void Print(void var, LogLevel level = LogLevel.NORMAL);
+
+
+/*!
+Prints formated text to console/log.
+\code
+	string c = "Peter";
+	PrintFormat("Hello %1, how are you?", c); // prints "Hello 'Peter', how are you?"
+\endcode
+*/
+proto void PrintFormat(string fmt, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL, LogLevel level = LogLevel.NORMAL);
+
+/*!
+\}
+*/
+/*!
+\defgroup Enforce Enforce script essentials
+\{
+*/
+
+/*!
+Marks method as obsolete. When is the method used, compiler just throw a compile-time
+warning, but method is called normally.
+\code
+	[Obsolete("Use different method!")]
+	void Hello()
+	{
+	}
+
+	void Test()
+	{
+		Hello(); // throws compile warning on this line: 'Hello' is obsolete: use different method!
+	}
+\endcode
+*/
+class Obsolete: Managed
+{
+	string m_Msg;
+	void Obsolete(string msg = "")
+	{
+		m_Msg = msg;
+	}
+}
+
+enum EAccessLevel
+{
+	ANY = 0,
+	LEVEL_0, //!< core module
+	LEVEL_1, //!< game lib module
+	LEVEL_2, //!< game module
+	LEVEL_3,
+	LEVEL_4,
+	LEVEL_5,
+	LEVEL_6,
+	/* stored in 4bits, max is 15 */
+}
+
+/*!
+Limit access to method only to script modules within some access level. If user
+tries to call this method from script module with improper access level, compilation
+error is thrown.
+\code
+	[Restrict(EAccessLevel.LEVEL_1, false)] // just throws warning
+	void DangerousMethod1();
+
+	[Restrict(EAccessLevel.LEVEL_1)] // throw an error and break compilation
+	void DangerousMethod2();
+\endcode
+*/
+class Restrict
+{
+	private EAccessLevel m_Level;
+	private bool m_IsError; //!< If true, throws compilation error, else it throw just warning
+
+	void Restrict(EAccessLevel level, bool isError = true)
+	{
+		m_Level = level;
+		m_IsError = isError;
+	}
+}
+
+//!Helper for printing out string expression. Example: PrintString("Hello " + var);
+void PrintString(string s)
+{
+	Print(s);
+}
+
+/*!
+\}
+*/
+/*!
+\defgroup Types Types
+Enforce script essentials
+\{
+*/
+
+/*!
+Helper for passing string expression to functions with void parameter.
+Example:
+\code
+	Print(String("Hello " + var));
+\endcode
+*/
+string String(string s)
+{
+	return s;
+}
+
+/*!
+Vector constructor from components.
+\param x x component
+\param y y component
+\param z z component
+\return resulting vector
+\code
+	Print( Vector(1, 2, 3) );
+
+	>> <1,2,3>
+\endcode
+*/
+proto native vector Vector(float x, float y, float z);
+
+//! Super root of all classes in Enforce script
+class Class
+{
+	/*!
+	Returns `true` when instance is of the type, or inherited one.
+	\param type Class type
+	\returns `true` when `clType` is the same as `type`, or inherited one.
+
+	Example:
+	\code
+		if (inst && inst.IsInherited(Widget))
+		{
+			Print("inst is inherited from Widget class!");
+		}
+	\endcode
+	*/
+	proto native external bool IsInherited(typename type);
+
+	//! Get actual size of instance including size of all referenced objects.
+	proto native external int GetSizeOf();
+
+	/*!
+	Returns name of class-type.
+	\returns class-type
+
+	Example:
+	\code
+		Man player = g_Game.GetPlayer();
+		string className = player.ClassName();
+		Print(className);
+
+		>> className = 'Man'
+	\endcode
+	*/
+	proto native owned external string ClassName();
+
+	/*!
+	Returns typename of object's class.
+	\returns class-type
+
+	Example:
+	\code
+		Man player = g_Game.GetPlayer();
+		typename type = player.Type();
+		Print(type.ToString());
+
+		>> 'Man'
+	\endcode
+	*/
+	proto native external typename Type();
+
+	proto external string ToString();
+
+	//! Get actual count of references holding this instance. If instance is not managed, zero is returned.
+	proto native external int GetRefCount();
+
+	/*!
+	Try to safely down-cast base class to child class.
+	\returns Down-cast `from` pointer when cast is successful (classes are related), or `null` if casting is invalid.
+
+	Example:
+	\code
+		// assume that Man inherits from Object
+		Object obj = g_Game.GetPlayer();
+		Man player = Man.Cast(obj);
+
+		if (player)
+		{
+			// hooray!
+		}
+	\endcode
+	*/
+	proto static Class Cast(Class from);
+
+	//! This function is for internal script usage.
+	private proto static void SafeCastType(out typename type, out Class to, Class from);
+}
+
+class Managed
+{
+	//! Return shallow copy of object, or null if it is not allowed (not public constructor)
+	proto external ref Managed Clone();
+}
+
+/*!
+Base class for classes which combine enf::Class and enf::BaseClass (in C++).
+All its inherited classes present in script will be automatically registered
+as config classes.
+*/
+class ScriptAndConfig: Managed
+{
+}
+
+//! Plain C++ pointer, no weak pointers, no memory management.
+class pointer
+{
+	proto string ToString();
+}
+
+//! Plain 64bit data, no weak pointers, no memory management.
+class handle64: pointer
+{
+}
+
+
+class func
+{
+	//! For internal use in VM.
+	private proto void SetInstance(Managed inst);
+}
+
+//! Script representation for C++ RTTI types.
+class TypeID: pointer
+{
+}
+
+class array<Class T>: Managed
+{
+	/*!
+	O(1) complexity.
+	\return Number of elements of the array
+	*/
+	proto native int Count();
+
+	/*!
+	\return `true` if the array size is 0, `false` otherwise.
+	*/
+	proto native bool IsEmpty();
+
+	/*!
+	Destroys all elements of the array and sets the Count to 0.
+	The underlying memory of the array is not freed.
+	*/
+	proto native void Clear();
+
+	/*!
+	Frees any underlying memory which is not used.
+	For example if the array allocated enough memory for 100 items but only 1 is used
+	(Count() is 1) this frees the memory taken by the remaining 99 items.
+	\warning
+	Memory allocation and deallocation are expensive so only use this function if you
+	know you won't be adding new items to the array on frame-by-frame basis or when
+	the memory consumption is of utmost importance.
+	*/
+	proto native void Compact();
+
+	//! Sets `n`-th element to given `value`.
+	proto void Set(int n, T value);
+
+	/*!
+	Tries to find the first occurrence of `value` in the array.
+	\return Index of the first occurrence of `value` if found, -1 otherwise.
+	\note This method has complexity O(n).
+	*/
+	proto int Find(T value);
+
+	/*!
+	Returns whether value is in array or not.
+	\note This method has complexity O(n).
+	*/
+	proto bool Contains(T value);
+
+	/*!
+	\return Element at the index `n`.
+	*/
+	proto T Get(int n);
+
+	/*!
+	Inserts element at the end of array.
+	\param value Element to be inserted.
+	\return Position at which element is inserted.
+	*/
+	proto int Insert(T value);
+
+	/*!
+	Inserts element at certain position and moves all elements behind
+	this position by one.
+	\param value Element to be inserted.
+	\param index Position at which element is inserted. Must be less than Count().
+	\return Number of elements after insertion.
+	*/
+	proto int InsertAt(T value, int index);
+
+	/*!
+	Inserts all elements from array.
+	\param from array from which all elements will be added.
+
+	Example:
+	\code
+		TStringArray arr1 = new TStringArray;
+		arr1.Insert( "Dave" );
+		arr1.Insert( "Mark" );
+		arr1.Insert( "John" );
+
+		TStringArray arr2 = new TStringArray;
+		arr2.Insert( "Sarah" );
+		arr2.Insert( "Cate" );
+
+		arr1.InsertAll(arr2);
+
+		for ( int i = 0; i < arr1.Count(); i++ )
+		{
+			Print( arr1.Get(i) );
+		}
+
+		>> "Dave"
+		>> "Mark"
+		>> "John"
+		>> "Sarah"
+		>> "Cate"
+	\endcode
+	*/
+	void InsertAll(notnull array<T> from)
+	{
+		for ( int i = 0; i < from.Count(); i++ )
+		{
+			Insert( from.Get(i) );
+		}
+	}
+
+	/*!
+	Removes element from array. The empty position is replaced by
+	last element, so removal is quite fast but does not retain order.
+	\param index Index of element to be removed
+	*/
+	proto native void Remove(int index);
+
+	/*!
+	Removes element from array, but retains all elements ordered. It's slower than Remove().
+	\param index Index of element to be removed.
+	*/
+	proto native void RemoveOrdered(int index);
+
+	/*!
+	Resizes the array to given size.
+	If the `newSize` is lower than current Count overflowing objects are destroyed.
+	If the `newSize` is higher than current Count missing elements are initialized to zero (null).
+	*/
+	proto native void Resize(int newSize);
+
+	/*!
+	Reserve memory for given number of elements.
+	This method is used for optimization purposes when the approximate size is known beforehand.
+	*/
+	proto native void Reserve(int newSize);
+
+	/*!
+	Swaps the contents of this and `other` arrays.
+	Does not involve copying of the elements.
+	*/
+	proto native void Swap(notnull array<T> other);
+
+	//! Sorts elements of array, depends on underlying type.
+	proto native void Sort(bool reverse = false);
+
+	//! Returns whether provided element index of array is valid.
+	proto native bool IsIndexValid(int index);
+
+	/*!
+	Copies contents of `from` array to this array.
+	\return Number of elements copied.
+	*/
+	proto int Copy(notnull array<T> from);
+
+	proto int Init(T init[]);
+
+	/*!
+	Removes element from array. The empty position is replaced by
+	last element, so removal is quite fast but does not retain order.
+	\return true if item was removed
+	*/
+	proto bool RemoveItem(T value);
+
+	/*!
+	Removes element from array, but retain all elements ordered. It's slower than RemoveItem().
+	\return true if item was removed
+	*/
+	proto bool RemoveItemOrdered(T value);
+
+	/*!
+	Print all elements in array.
+	\code
+		my_array.Debug();
+
+		>> "One"
+		>> "Two"
+		>> "Three"
+	\endcode
+	*/
+	void Debug()
+	{
+		PrintFormat( "Array count: %1", Count());
+
+		for ( int i = 0; i < Count(); i++ )
+		{
+			T item = Get(i);
+
+			PrintFormat("[%1] => %2", i, string.ToString(item));
+		}
+	}
+
+	/*!
+	Returns a random index of array. If Count is 0, returned index is -1.
+	\return Random index of array.
+
+	Example:
+	\code
+		Print( my_array.GetRandomIndex() );
+
+		>> 2
+	\endcode
+	*/
+	int GetRandomIndex()
+	{
+		if ( Count() > 0 )
+		{
+			return Math.RandomInt(0, Count());
+		}
+
+		return -1;
+	}
+
+	/*!
+	Returns a random element of array.
+	\return Random element of array.
+
+	Example:
+	\code
+		Print( my_array.GetRandomElement() );
+
+		>> "Three"
+	\endcode
+	*/
+	T GetRandomElement()
+	{
+		return Get(GetRandomIndex());
+	}
+
+	void SwapItems(int item1_index, int item2_index)
+	{
+		T item1 = Get(item1_index);
+		Set(item1_index, Get(item2_index));
+		Set(item2_index, item1);
+	}
+}
+
+//force these to compile so we can link C++ methods to them
+typedef array<string> TStringArray;
+typedef array<float> TFloatArray;
+typedef array<int> TIntArray;
+typedef array<bool> TBoolArray;
+typedef array<Class> TClassArray;
+typedef array<Managed> TManagedArray;
+typedef array<ref Managed> TManagedRefArray;
+typedef array<vector> TVectorArray;
+typedef array<pointer> TPointerArray;
+typedef array<ResourceName> TResourceNameArray;
+
+class set<Class T>: Managed
+{
+	proto native int Count();
+	/*!
+	\return `true` if the set size is 0, `false` otherwise.
+	*/
+	proto native bool IsEmpty();
+	/*!
+	Destroys all elements of the array and sets the Count to 0.
+	The underlying memory of the array is not freed.
+	*/
+	proto native void Clear();
+	/*!
+	Frees any underlying memory which is not used. For example, if the set
+	allocated enough memory for 100 items but only 1 is used (Count() is 1)
+	this frees the memory taken by the remaining 99 items.
+	\warning Memory allocation and deallocation are expensive so only use this
+	function if you know you won't be adding new items to the array on frame-by-frame
+	basis or when the memory consumption is of upmost importance.
+	*/
+	proto native void Compact();
+	/*!
+	Reserve memory for given number of elements.
+	This method is used for optimization purposes when the approximate size is known beforehand.
+	*/
+	proto native void Reserve(int newSize);
+	/*!
+	Tries to find the first occurrence of given value in the array.
+	\return Index of the first occurrence of `value` if found, -1 otherwise.
+	\note This method has complexity O(log n).
+	*/
+	proto int Find(T value);
+	/*!
+	Return if value is in array or not.
+	\note This method has complexity O(log n).
+	*/
+	proto bool Contains(T value);
+	proto T Get(int n);
+	/*!
+	Inserts element.
+	\param value Element to be inserted.
+	\return `true` when element was inserted, `false` when it is already in set.
+	*/
+	proto bool Insert(T value);
+	/*!
+	Removes element from set.
+	\param index Index of element to be removed.
+	*/
+	proto native void Remove(int index);
+	
+	/*!
+	Removes element from set.
+	\return true if item was removed
+	*/
+	proto bool RemoveItem(T value);
+	
+	//! Returns whether provided element index of set is valid.
+	proto native bool IsIndexValid(int index);
+
+	proto int Copy(set<T> from);
+	proto native void Swap(set<T> other);
+	proto int Init(T init[]);
+}
+
+//force these to compile so we can link C++ methods to them
+typedef set<string> TStringSet;
+typedef set<float> TFloatSet;
+typedef set<int> TIntSet;
+typedef set<Class> TClassSet;
+typedef set<Managed> TManagedSet;
+typedef set<ref Managed> TManagedRefSet;
+typedef set<pointer> TPointerSet;
+
+typedef int MapIterator;
+
+/*!
+Associative array template.
+Usage:
+\code
+	map<string, int> prg_count = new map<string, int>;
+
+	// fill
+	prg_count.Insert("hello", 10);
+	prg_count.Insert("world", 20);
+	prg_count.Insert("!", 1);
+
+	Print(prg_count.Get("world")); // prints '20'
+\endcode
+*/
+class map<Class TKey,Class TValue>: Managed
+{
+	/*!
+	\return Number of elements in the map.
+	*/
+	proto native int Count();
+
+	/*!
+	\return `true` if the map size is 0, `false` otherwise.
+	*/
+	proto native bool IsEmpty();
+
+	//! Clears the map.
+	proto native void Clear();
+
+	/*!
+	Search for an element with the given key.
+	\param key The key of the element to find.
+	\return value associated to given key or default for value type when key is not present
+	*/
+	proto TValue Get(TKey key);
+	/*!
+	Search for an element with the given key.
+	\param key The key of the element to find.
+	\param[out] val Destination where result will be stored.
+	\return `true` if given key exist.
+	*/
+	proto bool Find(TKey key, out TValue val);
+	/*!
+	Return the i-th element in the map.
+	\note This operation is O(n) complexity. Use with care!
+	\param index The position of the element in the map.
+	\return The element on the i-th position.
+	*/
+	proto TValue GetElement(int index);
+	/*!
+	Return the i-th element key in the map.
+	\note This operation is O(n) complexity. Use with care!
+	\param i The position of the element key in the map.
+	\return Return key of i-th element.
+	*/
+	proto TKey GetKey(int i);
+	/*!
+	Sets value of element with given key. If element with key does not exist, it is created.
+	\note Creating new elements is faster using Insert() function.
+	*/
+	proto void Set(TKey key, TValue value);
+	/*
+	Removes element with given `key`.
+	\return `true` if element was removed.
+	*/
+	proto bool Remove(TKey key);
+	/*!
+	Search for an element with the given key and remove it.
+	\param key The key of the element to find and remove.
+	\param[out] val Destination where result will be stored.
+	\return `true` if element was removed.
+	*/
+	proto bool Take(TKey key, out TValue value);
+	/*!
+	Removes i-th element with given key.
+	\note This operation is O(n) complexity. Use with care!
+	\param i The position of the element key in the map.
+	\return `true` if element was removed.
+	*/
+	proto bool RemoveElement(int i);
+	//! Returns whether map contains element with given key.
+	proto bool Contains(TKey key);
+	/*!
+	Insert new element into map.
+	\param key Key of element to be inserted.
+	\param value Data of element to be inserted.
+	*/
+	proto bool Insert(TKey key, TValue value);
+	proto int Copy(map<TKey,TValue> from);
+
+	bool ReplaceKey(TKey old_key, TKey new_key)
+	{
+		if (Contains(old_key))
+		{
+			Set(new_key, Get(old_key));
+			Remove(old_key);
+			return true;
+		}
+		return false;
+	}
+
+	TKey GetKeyByValue(TValue value)
+	{
+		TKey ret;
+		for (int i = 0; i < Count(); i++)
+		{
+			if (GetElement(i) == value)
+			{
+				ret = GetKey(i);
+				break;
+			}
+		}
+
+		return ret;
+	}
+
+	proto native MapIterator Begin();
+	proto native MapIterator End();
+	proto native MapIterator Next(MapIterator it);
+	proto TKey GetIteratorKey(MapIterator it);
+	proto TValue GetIteratorElement(MapIterator it);
+}
+
+typedef map<int, float>				TIntFloatMap;
+typedef map<int, int>					TIntIntMap;
+typedef map<int, string>			TIntStringMap;
+typedef map<int, Class>				TIntClassMap;
+typedef map<int, Managed>			TIntManagedMap;
+typedef map<int, ref Managed>	TIntManagedRefMap;
+typedef map<int, pointer>		TIntPointerMap;
+typedef map<int, vector>			TIntVectorMap;
+
+typedef map<string, float>		TStringFloatMap;
+typedef map<string, int>			TStringIntMap;
+typedef map<string, string>		TStringStringMap;
+typedef map<string, Class>		TStringClassMap;
+typedef map<string, Managed>	TStringManagedMap;
+typedef map<string, ref Managed>	TStringManagedRefMap;
+typedef map<string, pointer>	TStringPointerMap;
+typedef map<string, vector>		TStringVectorMap;
+
+typedef map<Class, float>		TClassFloatMap;
+typedef map<Class, int>			TClassIntMap;
+typedef map<Class, string>		TClassStringMap;
+typedef map<Class, Class>		TClassClassMap;
+typedef map<Class, Managed>		TClassManagedMap;
+typedef map<Class, ref Managed>		TClassManagedRefMap;
+typedef map<Class, pointer>	TClassPointerMap;
+typedef map<Class, vector>		TClassVectorMap;
+
+typedef map<pointer, float>		TPointerFloatMap;
+typedef map<pointer, int>			TPointerIntMap;
+typedef map<pointer, string>		TPointerStringMap;
+typedef map<pointer, Class>		TPointerClassMap;
+typedef map<pointer, Managed>		TPointerManagedMap;
+typedef map<pointer, ref Managed>	TPointerManagedRefMap;
+typedef map<pointer, pointer>		TPointerPointerMap;
+typedef map<pointer, vector>		TPointerVectorMap;
+
+typedef map<Managed, float>		TManagedFloatMap;
+typedef map<Managed, int>		TManagedIntMap;
+typedef map<Managed, string>	TManagedStringMap;
+typedef map<Managed, Class>		TManagedClassMap;
+typedef map<Managed, Managed>	TManagedManagedMap;
+typedef map<Managed, ref Managed>	TManagedManagedRefMap;
+typedef map<Managed, pointer>	TManagedPointerMap;
+typedef map<Managed, vector>	TManagedVectorMap;
+
+typedef map<ref Managed, float>	TManagedRefFloatMap;
+typedef map<ref Managed, int>		TManagedRefIntMap;
+typedef map<ref Managed, string>	TManagedRefStringMap;
+typedef map<ref Managed, Class>		TManagedRefClassMap;
+typedef map<ref Managed, Managed>	TManagedRefManagedMap;
+typedef map<ref Managed, ref Managed>	TManagedRefManagedRefMap;
+typedef map<ref Managed, pointer>	TManagedRefPointerMap;
+typedef map<ref Managed, vector>	TManagedRefVectorMap;
+
+/*!
+\}
+*/
+
+class ParamEnum: Managed
+{
+	string m_Key;
+	string m_Value;
+	string m_Desc;
+
+	void ParamEnum(string key, string value, string desc = "")
+	{
+		m_Key = key;
+		m_Value = value;
+		m_Desc = desc;
+	}
+}
+
+class ParamEnumArray: array<ref ParamEnum>
+{
+	static ParamEnumArray FromEnum(typename e)
+	{
+		ParamEnumArray params = new ParamEnumArray();
+		int cnt = e.GetVariableCount();
+		int val;
+
+		for (int i = 0; i < cnt; i++)
+		{
+			if (e.GetVariableType(i) == int && e.GetVariableValue(NULL, i, val))
+			{
+				params.Insert(new ParamEnum(e.GetVariableName(i), val.ToString()));
+			}
+		}
+
+		return params;
+	}
+}
+
+// -------------------------------------------------------------------------
+class UIWidgets
+{
+	//! Widget is set automatically by script variable type.
+	static const string	Auto = "auto";
+
+	//! Property is hidden when None is used. Same as UIWidgets.None.
+	static const string	Hidden = "";
+
+	//! Property is hidden when None is used.
+	static const string	None = "";
+
+	/*!
+	Color wheel picker. m_strParams has no usage. Type must be enf::DVT_COLOR
+	or enf::DVT_VECTOR3.
+	*/
+	static const string	ColorPicker = "colorPicker";
+
+	/*!
+	Registered resource picker.
+
+	m_strParams contains file extensions separated by whitespace. For folders
+	there are reserved virtual extensions "folders" and "unregFolders" that
+	can be mixed with other file extensions. "unregFolders" allows to choose
+	also unregistered folders which is good when property will not be saved to
+	game data (scripted tools for example).
+
+	You can also specify param that will filter config files of specific
+	class. Use "class=MyClassName" param for that. By default the filter passes also all classes that are being inherited from MyClassName. If you don't want to allow it then you can use extra param "inheritedClasses=false"
+
+	Type must be enf::DVT_RESOURCENAME.
+	*/
+	static const string	ResourceNamePicker = "resourcePickerSimple";
+
+	/*!
+	Registered resource picker with thumbnail support.
+
+	m_strParams contains file extensions separated by whitespace. For folders
+	there are reserved virtual extensions "folders" and "unregFolders" that
+	can be mixed with other file extensions. "unregFolders" allows to choose
+	also unregistered folders what is good when property will not be saved to
+	game data (scripted tools for example)
+
+	You can also specify param that will filter config files of specific
+	class. Use "class=MyClassName" param for that. By default the filter passes also all classes that are being inherited from MyClassName. If you don't want to allow it then you can use extra param "inheritedClasses=false"
+
+	Type must be enf::DVT_RESOURCENAME
+	*/
+	static const string	ResourcePickerThumbnail = "resourcePickerThumbnail";
+
+	/*!
+	File name picker. m_strParams contains file extensions separated by
+	whitespace. For folders there are reserved virtual extensions "folders".
+
+	Returned path is exact path (in format "$filesystemName:path"). For
+	absolute path use FileNameFormat=absolute e.g.
+	"emat FileNameFormat=absolute".
+
+	Only for editor stuff. All game paths must use ResourceName +
+	ResourcePicker.
+
+	Type must be enf::DVT_STRING.
+	*/
+	static const string	FileNamePicker = "fileNamePicker";
+
+	/*!
+	Array of name-ResourceName pairs. Uses resource picker. m_strParams
+	contains file extensions separated by whitespace
+
+	Type must be enf::DVT_OBJECTARRAY with objects of type enf::BaseContainer
+	of MaterialAssignClass class.
+	*/
+	static const string	ResourceAssignArray = "resourceAssignArray";
+
+	/*!
+	Date picker. m_strParams has no usage.
+	Type must be enf::DVT_INTEGER. Format is provided by enf::DateTimeAsInt.
+	*/
+	static const string	Date = "date";
+
+	/*!
+	Graph, represented either by enf::DVT_VECTOR2ARRAY or
+	enf::DVT_VECTOR4ARRAY, where the first value is fraction, and rest is
+	value. m_strParams has no usage.
+	*/
+	static const string	Graph = "graph";
+
+	//! Font picker. m_strParams has no usage. Type must be enf::DVT_STRING.
+	static const string	Font = "font";
+
+	/*!
+	SpinBox. m_strParams may contain min and max value separated by space.
+	Type must be enf::DVT_INTEGER or enf::DVT_SCALAR.
+	*/
+	static const string	SpinBox = "spinbox";
+
+	/*!
+	Combobox. m_strParams has usage for numeric values, where there may be min
+	and max value separated by space. Enums may contain selectable values.
+	Type must be enf::DVT_STRING, or enf::DVT_INTEGER or enf::DVT_SCALAR.
+	*/
+	static const string	ComboBox = "combobox";
+
+	static const string	EditComboBox = "editcombobox";
+
+	static const string	SearchComboBox = "searchcombobox";
+
+	/*!
+	Editbox for picking up IDs from localization table. Type must be
+	enf::DVT_STRING.
+	*/
+	static const string	LocaleEditBox = "localeeditbox";
+
+	/*!
+	Editbox. m_strParams has usage for numeric values, where there may be min
+	and max value separated by space. Type must be enf::DVT_STRING, or
+	enf::DVT_INTEGER or enf::DVT_SCALAR.
+	*/
+	static const string	EditBox = "editbox";
+
+	//! Checkbox. m_strParams has no usage. Type must be enf::DVT_BOOLEAN.
+	static const string	CheckBox = "checkbox";
+
+	/*!
+	Slider. m_strParams may contain min, max and step values separated by
+	space. Type must be enf::DVT_INTEGER of enf::DVT_SCALAR.
+	*/
+	static const string	Slider = "slider";
+
+	/*!
+	Array of bit flags represented by checkboxes. m_strParams has no usage.
+	Enums must contain bit definitions. Type must be enf::DVT_INTEGER.
+	*/
+	static const string	Flags = "flags";
+
+	/*!
+	Generic ".." button without default functionality. It's for custom GUI
+	implementation only. Type must be enf::DVT_STRING or enf::DVT_INTEGER or
+	enf::DVT_SCALAR.
+	*/
+	static const string	Button = "button";
+
+	/*!
+	Small script preview and button which opens ScriptEditor to edit script
+	property. Type must be enf::DVT_STRING.
+	*/
+	static const string	Script = "script";
+
+	/*!
+	Edit box with a generic ".." button which is without default
+	functionality. It's for custom GUI implementation only. Type must be
+	enf::DVT_STRING or enf::DVT_INTEGER or enf::DVT_SCALAR.
+	*/
+	static const string	EditBoxWithButton = "editboxWithButton";
+
+	/*!
+	Edit box with a generic ".." button which is used to open separate window
+	with text editor. Type must be enf::DVT_STRING.
+	*/
+	static const string	EditBoxMultiline = "editboxMultiline";
+
+	//! Dedicated to edit LOD factors. Type must be enf::DVT_SCALAR_ARRAY.
+	static const string	LODFactorsEdit = "lodFactorsEdit";
+
+	/*!
+	Single object or an array of objects (depends on variable definition).
+	Type must be enf::DVT_OBJECT or enf::DVT_OBJECTARRAY with objects. Use
+	"noDetails" parameter with it to remove extra information from GUI
+	(ClassName + goto Prefab button).
+	*/
+	static const string	Object = "object";
+
+	//! 3-element vector type in X/Y/Z form. Type must be enf::DVT_VECTOR3.
+	static const string Coords = "coords";
+
+	//! 2-element vector type in min-max form. Type must be enf::DVT_VECTOR2.
+	static const string Range = "range";
+
+	/*!
+	Array of CallbackClass objects. Type must be enf::DVT_OBJECTARRAY with
+	objects inherited from Callback class.
+	*/
+	static const string	Callback = "callback";
+
+	/*!
+	Single object or an array of objects (depends on variable definition).
+	Type must be enf::DVT_OBJECT or enf::DVT_OBJECTARRAY with objects. When
+	type is enf::DVT_OBJECTARRAY, there is no GUI of the array variable
+	visible, but GUI of the array members will be placed on the top level of
+	hierarchy. All ancestors and descendant objects (depends by context) will
+	be editable.
+	*/
+	static const string	TopLevelObject = "topLevelObject";
+
+	/*!
+	Editor for splines which opens a dialog where the curve can be edited.
+	Type must be CurvePoints or CurvePointsMulti. rangescale in attribute may
+	specify "xScale yScale xOffset yOffset".
+	*/
+	static const string GraphDialog = "graphDialog";
+
+	/*!
+	Editor which displays min and max bounds, also allows using the
+	BoundingVolumeEditor. Type must be enf::DVT_OBJECT.
+	*/
+	static const string BoundingVolumeEditor = "boundingVolume";
+}
+
+
+
+enum NamingConvention
+{
+	NC_CAN_HAVE_NAME,
+	NC_MUST_HAVE_NAME,
+	NC_MUST_HAVE_GUID
+}
+
+/*!
+\defgroup Attributes Attributes
+\{
+*/
+
+class Attribute
+{
+	string m_DefValue;
+	string m_UiWidget; //!< use values from UIWidgets
+	/*!
+	Properties for UI in editor, depends on property type and used UI Widget.
+	- for numeric types use format:"MIN_VALUE MAX_VALUE STEP" eg. "1 100 0.5", for min/max values can be used also inf / -inf as infinite
+	- for file dialog use format "ext1;ext2"
+	*/
+	string m_Params;
+	string m_Desc;
+	string m_Category;
+	int m_Precision;
+
+	/*!
+	Only ints and floats are currently supported. Array can be defined this
+	way:
+	\code
+		{ ParamEnum("Choice 1", "1"), ParamEnum("Choicen 2", "2") }
+	\endcode
+	*/
+	ref ParamEnumArray m_Enums;
+
+	void Attribute(string defvalue = "", string uiwidget = "auto"/*use UIWidgets*/, string desc = "", string params = "", ParamEnumArray enums = NULL, string category = "", int precision = 3)
+	{
+		m_DefValue = defvalue;
+		m_UiWidget = uiwidget;
+		m_Params = params;
+		m_Desc = desc;
+		m_Category = category;
+		m_Enums = enums;
+		m_Precision = precision;
+	}
+}
+
+//! Default icon for all components written in script that don't inherit ScriptComponent
+const string HYBRID_COMPONENT_ICON = ":/Workbench/WorldEditor/Entity/componentHybrid.png";
+
+class CommonEditorProps
+{
+	string m_Category; //<! Typically a "folder/item" path for placing the type into a tree-view, eg. "StaticEntities/Walls".
+	string m_Description; //<! Typically some description of type usage.
+
+	string m_Icon; //<! Typically a path to icon file for better visualization in a tree-view.
+	bool m_Visible; //<! Is the entity visualizer visible when not selected.
+	bool m_Insertable; //<! Is the type available for insertion from a tree-view
+	bool m_ConfigRoot; //<! Whether the type can be used as a root object of a config file (.conf).
+
+	void CommonEditorProps(string category = "", string description = "", string color = "255 0 0 255", bool visible = true, bool insertable = true, bool configRoot = false, string icon = "")
+	{
+		m_Category = category;
+		m_Description = description;
+		m_Visible = visible;
+		m_Insertable = insertable;
+		m_ConfigRoot = configRoot;
+		m_Icon = icon;
+	}
+}
+
+class ComponentEditorProps: CommonEditorProps
+{
+}
+
+class EntityEditorProps: CommonEditorProps
+{
+	vector m_SizeMin; //!< Minimum dimensions of an entity visualizer shape
+	vector m_SizeMax; //!< Maximum dimensions of an entity visualizer shape
+	string m_Style; //!< Can be: "none", "box", "sphere", "cylinder", "capsule", "pyramid", "diamond". Anything else is custom. Empty is none.
+	string m_Color; //<! Color of an entity visualizer shape outline
+	string m_Color2; //<! Color of an entity visualizer shape
+	bool m_DynamicBox; //<! Is the entity visualizer using custom dimensions (provided by _WB_GetBoundBox)
+
+	void EntityEditorProps(string category = "", string description = "", string color = "255 0 0 255", bool visible = true, bool insertable = true, bool configRoot = false, string icon = "", string style = "box", vector sizeMin = "-0.25 -0.25 -0.25", vector sizeMax = "0.25 0.25 0.25", string color2 = "0 0 0 0", bool dynamicBox = false)
+	{
+		m_Style = style;
+		m_SizeMin = sizeMin;
+		m_SizeMax = sizeMax;
+		m_Color = color;
+		m_Color2 = color2;
+		m_DynamicBox = dynamicBox;
+	}
+}
+
+// -------------------------------------------------------------------------
+/*!
+An Attribute for BaseContainer.
+
+\code
+	[BaseContainerProps()]
+	class MyObject
+	{
+		[Attribute("true", UIWidgets.CheckBox)]
+		bool Prop1;
+
+		[Attribute("7", UIWidgets.EditBox)]
+		int Prop2;
+
+		[Attribute("hello", UIWidgets.EditBox)]
+		string Prop3;
+	}
+
+	[BaseContainerProps()]
+	class MyObjectSpecial: MyObject
+	{
+		[Attribute("1.2", UIWidgets.EditBox)]
+		float Prop4;
+
+		[Attribute("", UIWidgets.Object)]
+		ref MyObject Prop5;
+	}
+
+	// ...
+	class TestCube : GenericEntity
+	{
+		[Attribute("", UIWidgets.Object)]
+		ref MyObject m_singleObject;
+
+		[Attribute("", UIWidgets.Object)]
+		ref array<ref MyObject> m_arrayOfObjects;
+	};
+\endcode
+*/
+class BaseContainerProps: CommonEditorProps
+{
+	NamingConvention m_NamingConvention;
+
+	void BaseContainerProps(string category = "", string description = "", string color = "255 0 0 255", bool visible = true, bool insertable = true, bool configRoot = false, string icon = "", NamingConvention namingConvention = NamingConvention.NC_MUST_HAVE_GUID)
+	{
+		m_NamingConvention = namingConvention;
+	}
+}
+
+/*!
+Base class for attribute for setting custom title in property grid
+(Workbench). Works only on classes defined by BaseContainerProps attribute.
+Inherit this attribute to set your own custom title.
+\code
+	class MyCustomTitle: BaseContainerCustomTitle
+	{
+		override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+		{
+			title = "My Title";
+			return true;
+		}
+	}
+
+	[BaseContainerProps(), MyCustomTitle()]
+	class TestConfigClass
+	{
+		[Attribute()]
+		string m_ID;
+	};
+\endcode
+*/
+class BaseContainerCustomTitle
+{
+	bool _WB_GetCustomTitle(BaseContainer source, out string title);
+	bool _WB_GetCustomClassTitle(string className, out string title);
+}
+
+/*!
+Attribute for setting any string property as custom title.
+\code
+	[BaseContainerProps(), BaseContainerCustomTitleField("m_ID")]
+	class TestConfigClass
+	{
+		[Attribute()]
+		string m_ID;
+	};
+\endcode
+*/
+class BaseContainerCustomTitleField: BaseContainerCustomTitle
+{
+	string m_PropertyName;
+
+	void BaseContainerCustomTitleField(string propertyName)
+	{
+		m_PropertyName = propertyName;
+	}
+
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		return source.Get(m_PropertyName, title);
+	}
+}
+
+/*!
+Attribute for callback system. Method with this attribute will be listed in callback list.
+\code
+	class MyManager
+	{
+		[CallbackMethod()]
+		void DoSomething(string p1, int p2);
+
+		[CallbackMethod()]
+		void DoSomethingElse(bool p1);
+	}
+
+	[CallbackContext()]
+	MyManager GetMyManager();
+
+	// editor will offer "GetMyManager.DoSomething" and "GetMyManager.DoSomethingElse" in callback properties
+\endcode
+*/
+class CallbackMethod
+{
+}
+
+/*!
+Attribute for callback system. Method - getter with this attribute is returning instance(context) to callbacks on.
+\code
+	class MyManager
+	{
+		[CallbackMethod()]
+		void DoSomething(string p1, int p2);
+
+		[CallbackMethod()]
+		void DoSomethingElse(bool p1);
+	}
+
+	[CallbackContext()]
+	MyManager GetMyManager();
+
+	// editor will offer "GetMyManager.DoSomething" and "GetMyManager.DoSomethingElse" in callback properties
+\endcode
+*/
+class CallbackContext
+{
+}
+
+/*!
+Attribute to mark member variable of class as hint for sorting arrays of objects (both dynamic and static). 
+Supported member types for sorting are int, float, string and object
+
+\code
+class SampleObject
+{
+	[SortAttribute()]
+	int m_iMember;
+	
+	void SampleObject(int i)
+	{
+		m_iMember = i;
+	}
+}
+
+void Test()
+{
+	array<ref SampleObject> a = {SampleObject(5), SampleObject(2), SampleObject(7)};
+	Print("Before:");
+	foreach (auto o: a) Print(o.m_iMember); // 5,2,7
+
+	a.Sort();
+
+	Print("After:");
+	foreach (auto o: a) Print(o.m_iMember); // 2,5,7
+}
+
+\endcode
+*/
+class SortAttribute 
+{
+}
+/*!
+\}
+*/
+//#define DEBUG_LOADING_SCREENS
+
+class SCR_BaseLoadingScreenComponent : ScriptedWidgetComponent
+{
+	protected Widget m_wRoot;
+
+	protected ref SCR_ScenarioLoadingScreenWidgets m_Widgets;
+	protected SCR_LoadingSpinner m_SpinnerComp;
+	
+	protected static const float FADE_TIME_BLACK_OVERLAY = 1;
+	
+	protected float m_fLoadingTime;
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void HandlerAttached(Widget w)
+	{
+		#ifdef DEBUG_LOADING_SCREENS
+		PrintFormat(">> %1 >> HandlerAttached | widget: %2", this, w);
+		#endif			
+		
+		m_wRoot = w;
+
+		m_Widgets = new SCR_ScenarioLoadingScreenWidgets();
+		m_Widgets.Init(m_wRoot);		
+
+		// Get spinner component
+		if (m_Widgets.m_wSpinner)
+		{
+			Widget compWidget = m_Widgets.m_wSpinner.FindAnyWidget("Spinner");
+			
+			if (compWidget)
+				m_SpinnerComp = SCR_LoadingSpinner.Cast(compWidget.FindHandler(SCR_LoadingSpinner));		
+		}		
+				
+		InitWidgets();
+		
+		// Get total elapsed loading time & set the animations progress
+		m_fLoadingTime = GetLoadingTime();
+		
+		#ifdef DEBUG_LOADING_SCREENS
+		PrintFormat(">> %1 >> HandlerAttached | widget: %2 | m_fLoadingTime: %3", this, w, m_fLoadingTime);
+		#endif			
+		
+		Update(m_fLoadingTime);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void InitWidgets()
+	{
+		m_Widgets.m_wContent.SetVisible(true);
+		m_Widgets.m_wContentOverlay.SetVisible(true);
+		m_Widgets.m_wPreloadContent.SetVisible(true);
+		m_Widgets.m_wBlackOverlay.SetVisible(true);		
+	}	
+		
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
+	//! \param[in] progress
+	//! \param[in] minDurationRatio
+	void Update(float timeSlice, float progress = 0, float minDurationRatio = 0)
+	{
+		m_fLoadingTime += timeSlice;
+		
+		Fade(m_Widgets.m_wBlackOverlay, false, FADE_TIME_BLACK_OVERLAY, timeSlice);
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	void OnHide()
+	{
+		SaveLoadingTime(m_fLoadingTime);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	static void ResetLoadingTime()
+	{
+		GameSessionStorage.s_Data["m_fLoadingTime"] = "0";
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] loadingTime
+	void SaveLoadingTime(float loadingTime)
+	{
+		GameSessionStorage.s_Data["m_fLoadingTime"] = loadingTime.ToString();
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetLoadingTime()
+	{
+		// Get count
+		string sLoadingTime = GameSessionStorage.s_Data["m_fLoadingTime"];
+		float fLoadingTime = 0;
+		
+		// Setup number
+		if (sLoadingTime.IsEmpty())
+		{
+			GameSessionStorage.s_Data["m_fLoadingTime"] = "0";
+		}	
+		else 
+		{
+			fLoadingTime = sLoadingTime.ToFloat();
+		}
+
+		return fLoadingTime;
+	}	
+				
+	//------------------------------------------------------------------------------------------------
+	protected void Fade(Widget w, bool show, float length, float timeslice)
+	{
+		if (length <= 0)
+		{
+			w.SetOpacity(show);
+			return;		
+		}
+		
+		float opacityCurrent = w.GetOpacity();
+		
+		if (opacityCurrent == show)
+			return;
+		
+		float progressDelta = timeslice / length;
+		
+		if (!show)
+			progressDelta = -progressDelta;
+		
+		float progress = opacityCurrent + progressDelta;
+		
+		progress = Math.Clamp(progress, 0, 1);
+		
+		float opacity = Math.Lerp(0, 1, progress);
+		w.SetOpacity(opacity);
+		w.SetVisible(true);
+	}
+}
+//#define DEBUG_SPLASH_SCREENS
+
+//------------------------------------------------------------------------------------------------
+class SplashScreen: BaseLoadingAnim
+{
+	// Game intro splash screen, shown when game starts-up + used for EA extra screen
+	const string INTRO_SPLASH_LAYOUT = "{1C71B463B3B66BAB}UI/layouts/Menus/MainMenu/IntroSplashScreen.layout";
+	
+	// Scenario pre-load screen
+	const string SCENARIO_PRELOAD_LAYOUT = "{4C8B29889444BDA3}UI/layouts/Menus/LoadingScreen/ScenarioLoadingScreen.layout";
+	
+	static int s_iSplashShown;
+	static protected bool s_bOpened;
+	
+	private ref SCR_IntroSplashScreenComponent m_IntroSplashScreenComponent;
+	private ref SCR_PreloadScreenComponent m_PreloadScreenComponent;
+
+	//------------------------------------------------------------------------------------------------
+	override void Load()
+	{
+		#ifdef DEBUG_SPLASH_SCREENS
+		PrintFormat(">> %1 >> Load", this);
+		#endif
+		
+		// Create intro splash screen; used when game is starting and loading the MainMenu world
+		if (BaseLoadingAnim.s_NumReloads == 0 && s_iSplashShown == 0)
+		{
+			m_wRoot = m_WorkspaceWidget.CreateWidgets(INTRO_SPLASH_LAYOUT, m_WorkspaceWidget);
+			
+			if (m_wRoot)
+			{
+				m_IntroSplashScreenComponent = new SCR_IntroSplashScreenComponent();
+				m_wRoot.AddHandler(m_IntroSplashScreenComponent);				
+			}			
+		}
+		// Create scenario preload screen; used when game is being restarted due to addons
+		else
+		{
+			m_wRoot = m_WorkspaceWidget.CreateWidgets(SCENARIO_PRELOAD_LAYOUT, m_WorkspaceWidget);
+			
+			if (m_wRoot)
+			{
+				m_PreloadScreenComponent = new SCR_PreloadScreenComponent();
+				m_wRoot.AddHandler(m_PreloadScreenComponent);				
+			}
+		}
+		
+		s_iSplashShown++;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void Show()
+	{
+		#ifdef DEBUG_LOADING_SCREENS
+		PrintFormat(">> %1 >> Show", this);
+		#endif
+		
+		s_bOpened = true;
+		
+		WidgetManager.SetCursor(12);		// Hide cursor
+		super.Show();
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	override void Hide()
+	{
+		#ifdef DEBUG_LOADING_SCREENS
+		PrintFormat(">> %1 >> Hide", this);
+		#endif		
+		
+		s_bOpened = false;
+		
+		if (m_PreloadScreenComponent)
+			m_PreloadScreenComponent.OnHide();		
+
+		//WidgetManager.SetCursor(0);		// Show cursor
+		super.Hide();
+	}	
+			
+	//------------------------------------------------------------------------------------------------
+	override void Update(float timeSlice, float progress, float minDurationRatio)
+	{
+		if (!m_wRoot)		
+			return;
+		
+		if (m_IntroSplashScreenComponent)
+			m_IntroSplashScreenComponent.Update(timeSlice);
+		else
+			m_PreloadScreenComponent.Update(timeSlice, progress, minDurationRatio);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static int GetGameReloads()
+	{
+		return s_NumReloads;
+	}	
+};
+
+// Script File
+
+[EntityEditorProps(category: "GameLib/Scripted/Autotest", description:"AutotestGrid", dynamicBox: true)]
+class AutotestGridClass: GenericEntityClass
+{
+}
+
+class SimpleTimeSignal
+{
+	private float m_LastTime;
+	private float m_TimeInterval;
+	
+	void SimpleTimeSignal(float timeInterval)
+	{
+		m_LastTime = 0;
+		m_TimeInterval = timeInterval;
+	}
+	
+	bool Update(float currentTime)
+	{
+		if (currentTime - m_LastTime > m_TimeInterval)
+		{
+			m_LastTime = currentTime;
+			
+			return true;
+		}
+		
+		return false;
+	}
+	
+	void Restart(float currentTime)
+	{
+		m_LastTime = currentTime;
+	}
+	
+	void RestartAndSignal()
+	{
+		m_LastTime = -m_TimeInterval;
+	}
+}
+
+class AutotestGrid: GenericEntity
+{
+	[Attribute("Camera1", UIWidgets.EditBox, "Name of camera entity", "")]
+	private string m_cameraEntityName; //< name of camera entity which will be used to take screenshots
+
+	[Attribute("60", UIWidgets.Slider, "Which FPS is considered as minimal", "0 240 1")]
+	private float m_FPSLimit; //< this time is waited for the screenshot to be captured and saved on disk
+	
+	[Attribute("1.8", UIWidgets.Slider, "Distance between surface and camera on y-axis", "0 20 0.1")]
+	private float m_HeightAboveSurface;
+	
+	[Attribute("5", UIWidgets.Slider, "Time in seconds to make a 360 degree rotation, to load all of the resources", "1 100 1")]
+	private float m_FirstRotationTime;
+
+	[Attribute("5", UIWidgets.Slider, "Time in seconds to make a 360 degree rotation, to make the measurement", "1 100 1")]
+	private float m_SecondRotationTime;
+
+	[Attribute("1", UIWidgets.Slider, "Time in seconds to start the autotest, n seconds after the initialization of this object", "1 20 1")]
+	private float m_StartAfterInitTime;
+
+	[Attribute("10", UIWidgets.Slider, "Grid size on x axis", "1 100 1")]
+	private float m_GridX;
+
+	[Attribute("10", UIWidgets.Slider, "Grid size on z axis", "1 100 1")]
+	private float m_GridZ;
+		
+	private int m_GridPosition;
+
+	private IEntity m_camera;
+	private string m_directory;
+	
+	private TextWidget m_FPSWidget;
+	
+	protected float m_timeFromStart;
+	protected float m_timeLastStatsSnapshot;
+
+	private ref SimpleTimeSignal m_StartTtimeSignal;	
+	private ref SimpleTimeSignal m_FirstRotationSignal;
+	private ref SimpleTimeSignal m_SecondRotationSignal;
+	
+	//-1 - init - wait for init duration to pass
+	//0 - ready for 1st rotation
+	//1 - doing 1st rotation
+	//2 - ready for 2nd rotation
+	//3 - doing 2nd rotation
+	private int m_CurrentRotation;
+	
+	private ref Measurement m_MeasureFPS;
+	private ref Measurement m_MeasureMemory;
+	
+	private ref array<ref Measurement> m_MeasurementMemory;
+	
+	[Attribute("MotionZone", UIWidgets.EditBox, "Motion Zone Object Name", "")]
+	private string m_MotionZone;
+	
+	private MotionZone m_MotionZoneInstance;
+	
+	private float m_CurrentRotationT;
+	private float m_CurrentDuration;
+	
+	private ref AutotestBase m_AutotestBase;
+	
+	void AutotestGrid(IEntitySource src, IEntity parent)
+	{
+		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
+		SetFlags(EntityFlags.ACTIVE, true);
+		m_MeasureFPS = new Measurement();
+		m_MeasureMemory = new Measurement();
+		m_MeasurementMemory = new array<ref Measurement>();
+		int mc = MemoryStatsSnapshot.GetStatsCount();
+		for (int i = 0; i < mc; i++)
+		{
+			m_MeasurementMemory.Insert(new Measurement());
+		}
+		
+		m_GridPosition = 0;
+		m_timeFromStart = 0;
+		m_timeLastStatsSnapshot = 0;
+		m_CurrentRotation = -1;
+		m_CurrentRotationT = 0;
+		
+		m_StartTtimeSignal = new SimpleTimeSignal(m_StartAfterInitTime);		
+		m_FirstRotationSignal = new SimpleTimeSignal(m_FirstRotationTime);
+		m_SecondRotationSignal = new SimpleTimeSignal(m_SecondRotationTime);
+
+		System.GetCLIParam("autotest-output-dir", m_directory);
+
+		if (m_directory.Length() == 0)
+		{
+			m_directory = "$logs:" + GetName();
+		}
+		
+		m_AutotestBase = new AutotestBase();
+		AutotestBase.SetLastProcessingTime_Treshold(100/1000);
+	}
+
+	void ~AutotestGrid()
+	{				
+	}
+	
+	vector GridPositionToWorldPosition(int gridPosition)
+	{
+		float dX = m_MotionZoneInstance.GetMax()[0] - m_MotionZoneInstance.GetMin()[0];
+		float dZ = m_MotionZoneInstance.GetMax()[2] - m_MotionZoneInstance.GetMin()[2];
+		
+		float nX = dX / m_GridX;
+		float nZ = dZ / m_GridZ;
+		
+		int t = Math.AbsInt(gridPosition / m_GridX);
+		int cX = t;
+		int cZ = gridPosition - t * m_GridX;
+		
+		vector ret = Vector(m_MotionZoneInstance.GetMin()[0] + nX * cX + 0.5 * nX, 0, m_MotionZoneInstance.GetMin()[2] + nZ * cZ + 0.5 * nZ);
+		ret[1] = m_HeightAboveSurface + GetYDistance(ret[0], ret[2]);
+		
+		return ret;
+	}
+	
+	void UpdateMeasurements()
+	{
+		int f = System.GetFPS();
+		
+		m_MeasureFPS.AddValue(f);
+		m_MeasureMemory.AddValue(System.MemoryAllocationKB());
+		
+		if (m_timeFromStart - m_timeLastStatsSnapshot > 2)
+		{
+			m_timeLastStatsSnapshot = m_timeFromStart;
+
+			auto snapshot = new MemoryStatsSnapshot();
+			int count = snapshot.GetStatsCount();
+			for (int i = 0; i < count; i++)
+			{
+				int value = snapshot.GetStatValue(i);
+				m_MeasurementMemory[i].AddValue(value);
+			}
+		}
+	}
+	
+	override void EOnInit(IEntity owner) //!EntityEvent.INIT
+	{
+		m_camera = g_Game.FindEntity(m_cameraEntityName);
+
+		if (!m_camera)
+		{
+			Print("Camera not found 2!", LogLevel.ERROR);
+		}
+		else
+		{
+			m_camera.SetOrigin(Vector(1269.97, 32.95, 1156.55));
+		}
+		
+		m_MotionZoneInstance = MotionZone.Cast(g_Game.FindEntity(m_MotionZone));
+		
+		if (m_MotionZoneInstance != null)
+		{
+			m_MotionZoneInstance.Initialize();
+		}
+	
+		m_FPSWidget = TextWidget.Cast(g_Game.GetWorkspace().CreateWidgetInWorkspace(WidgetType.TextWidgetTypeID, 16, 16, 512, 128, WidgetFlags.VISIBLE, new Color(0.0, 0.0, 0.0, 1.0), 1024));
+		m_FPSWidget.SetExactFontSize(64);
+		
+/*		
+		for (int i = 0; i < 100; i++)
+		{
+			vector v = GridPositionToWorldPosition(i);
+			Print("" + i  + " | " + v);
+		}
+*/
+	}
+	
+	private void MakeSummeryFile(string filename)
+	{
+		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+
+		if(descrFile)
+		{
+			int sizeX = g_Game.GetWorkspace().GetWidth();
+			int sizeY = g_Game.GetWorkspace().GetHeight();
+			descrFile.WriteLine(string.Format("GRID AUTO TEST"));
+			descrFile.WriteLine(string.Format("Resolution: %1 x %2 px", sizeX, sizeY));
+#ifdef WORKBENCH
+			descrFile.WriteLine(string.Format("Entering playmode time: %1 s", g_Game.GetLoadTime() / 1000));
+#else
+			descrFile.WriteLine(string.Format("Load time: %1 s", g_Game.GetLoadTime() / 1000));
+#endif
+			descrFile.WriteLine(string.Format("Duration: %1 s", m_timeFromStart));
+			
+			descrFile.WriteLine(string.Format("FPS average (s): %1", m_MeasureFPS.ComputeAverage()));
+			descrFile.WriteLine(string.Format("FPS min (s): %1", m_MeasureFPS.m_Min));
+			descrFile.WriteLine(string.Format("FPS max (s): %1", m_MeasureFPS.m_Max));
+			
+			int count = MemoryStatsSnapshot.GetStatsCount();
+			for (int i = 0; i < count; i++)
+			{
+				string name = MemoryStatsSnapshot.GetStatName(i);
+				descrFile.WriteLine(string.Format("Measurement '%1' average: %2", name, (int)m_MeasurementMemory[i].ComputeAverage()));
+				descrFile.WriteLine(string.Format("Measurement '%1' min: %2", name, (int)m_MeasurementMemory[i].m_Min));
+				descrFile.WriteLine(string.Format("Measurement '%1' max: %2", name, (int)m_MeasurementMemory[i].m_Max));
+			}
+			
+			descrFile.Close();
+			Print("Summary file successfully saved into " + filename);
+		}
+	}
+	
+	override void EOnFrame(IEntity owner, float timeSlice) //!EntityEvent.FRAME
+	{	
+
+		//DO FPS
+		int fps = System.GetFPS();
+		m_FPSWidget.SetText("FPS " + fps);
+		if (fps < m_FPSLimit)
+			m_FPSWidget.SetColor(new Color(1.0, 0.0, 0.0, 1.0));
+		else
+			m_FPSWidget.SetColor(new Color(0.0, 1.0, 0.0, 1.0));
+		
+		if (m_CurrentRotation >= 0 && !g_Game.IsPreloadFinished())
+			return;
+		
+		vector destination;
+		vector direction;
+
+		vector output[2];
+		
+		destination = output[0];
+		direction = output[1];
+		
+		bool signal0 = m_StartTtimeSignal.Update(m_timeFromStart);
+		bool signal1 = m_FirstRotationSignal.Update(m_timeFromStart);
+		bool signal2 = m_SecondRotationSignal.Update(m_timeFromStart);
+		
+		if (signal0 && m_CurrentRotation == -1)
+		{
+			m_CurrentRotation = 0;
+			m_FirstRotationSignal.RestartAndSignal();
+			
+			vector p = GridPositionToWorldPosition(m_GridPosition);
+			m_camera.SetOrigin(p);	
+			g_Game.BeginPreload(GetWorld(), p, 500);
+			Print("-- init time done");
+		}
+		else
+		if (signal1 && m_CurrentRotation == 0)
+		{
+			//start 1st rotation
+			m_CurrentRotation = 1;
+			m_CurrentRotationT = 0;
+			m_CurrentDuration = m_FirstRotationTime;
+			Print("-- start 1st rotation");
+		}
+		else
+		if (signal1 && m_CurrentRotation == 1)
+		{
+			//end 1st rotation
+			m_CurrentRotation = 2;
+			m_CurrentDuration = 1;
+			Print("-- end 1st rotation");
+			m_SecondRotationSignal.RestartAndSignal();
+		}
+		else
+		if (signal2 && m_CurrentRotation == 2)
+		{
+			//start 2nd rotation
+			m_CurrentRotation = 3;
+			m_CurrentRotationT = 0;
+			m_CurrentDuration = m_SecondRotationTime;
+			Print("-- start 2nd rotation");
+		}
+		else
+		if (signal2 && m_CurrentRotation == 3)
+		{
+			m_GridPosition++;
+			if (m_GridPosition >= m_GridX * m_GridZ)
+			{
+				Print("-- END of test");
+				string summeryFilename = string.Format("%1/%2", m_directory, "summary_grid.txt");
+				Print("Autotest Finished; result in " + summeryFilename);
+				FileIO.MakeDirectory(m_directory);
+				MakeSummeryFile(summeryFilename);
+				g_Game.RequestClose();
+			}
+			else
+			{
+				m_CurrentRotation = 0;
+				m_CurrentDuration = 1;
+
+				vector p = GridPositionToWorldPosition(m_GridPosition);
+				m_camera.SetOrigin(p);	
+				g_Game.BeginPreload(GetWorld(), p, 500);
+				
+				m_FirstRotationSignal.RestartAndSignal();
+
+				//end 2nd rotation a move to next grid point
+				Print("-- end 2nd rotation a move to next grid point");
+			}
+		}		
+		
+		if (m_CurrentRotation > 0)
+		{
+			RotateCamera(timeSlice, m_CurrentDuration);
+		}
+		
+		if (m_CurrentRotation == 3)
+		{
+			UpdateMeasurements();			
+		}
+		
+		if (AutotestBase.IsLastProcessingTime_Signal())
+		{
+			//print into log
+			Print("!!! Warning Frame update too long");
+			
+			AutotestBase.ResetLastProcessingTime_Signal();
+		}
+		
+		m_timeFromStart += timeSlice;
+	}
+	
+	private void RotateCamera(float timeSlice, float duration)
+	{
+		vector matF[4];
+		vector matB[4];
+			
+		float d = duration / 4;
+	
+		if (m_CurrentRotationT <= 1 * d)
+		{
+			Math3D.DirectionAndUpMatrix(vector.Forward, vector.Up, matF);
+			Math3D.DirectionAndUpMatrix(vector.Right, vector.Up, matB);			
+		}
+		else
+		if (m_CurrentRotationT <= 2 * d)
+		{
+			Math3D.DirectionAndUpMatrix(vector.Right, vector.Up, matF);
+			Math3D.DirectionAndUpMatrix(-vector.Forward, vector.Up, matB);			
+		}
+		else
+		if (m_CurrentRotationT <= 3 * d)
+		{
+			Math3D.DirectionAndUpMatrix(-vector.Forward, vector.Up, matF);
+			Math3D.DirectionAndUpMatrix(-vector.Right, vector.Up, matB);			
+		}
+		else
+		{
+			Math3D.DirectionAndUpMatrix(-vector.Right, vector.Up, matF);
+			Math3D.DirectionAndUpMatrix(vector.Forward, vector.Up, matB);
+		}
+		
+		float quatF[4];
+		Math3D.MatrixToQuat(matF, quatF);
+		
+		float quatB[4];
+		Math3D.MatrixToQuat(matB, quatB);
+	
+		float outQuat[4];
+		
+		float t = m_CurrentRotationT;
+		if (m_CurrentRotationT >= 3.0 * d)
+		{
+			t = (t - 3.0 * d) / d;
+		}
+		else
+		if (m_CurrentRotationT >= 2.0 * d)
+		{
+			t = (t - 2.0 * d) / d;
+		}
+		else
+		if (m_CurrentRotationT >= 1.0 * d)
+		{
+			t = (t - 1.0 * d) / d;
+		}
+		else
+		{
+			t = t / d;
+		}
+		
+		Math3D.QuatLerp(outQuat, quatF, quatB, t);
+		
+		m_CurrentRotationT += timeSlice;
+		
+		vector angles = Math3D.QuatToAngles(outQuat);
+		
+		m_camera.SetYawPitchRoll(angles);
+	}
+		
+	private string QuatToString(float q[4])
+	{
+		return "(" + q[0] + "," + q[1] + "," + q[2] + "," + q[3] + ")";
+	}
+	
+	private float GetYDistance(float x, float z)
+	{
+		float wy = GetWorld().GetSurfaceY(x, z);
+		float oh = 0;		
+		if (GetWorld().IsOcean())
+		{
+			oh = GetWorld().GetOceanBaseHeight();
+			oh = Math.Ceil(Math.AbsFloat(oh));
+		}
+		
+		float hh = wy;
+		if (oh > wy)
+		{
+			hh = oh;
+		}
+		
+		return hh;
+	}
+	
+}

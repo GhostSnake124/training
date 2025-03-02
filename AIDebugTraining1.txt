@@ -1,0 +1,2610 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Debug
+\{
+*/
+
+sealed class Debug
+{
+	private void Debug();
+	private void ~Debug();
+
+	const int MB_PRESSED_MASK = 0x80000000;
+
+	/*!
+	Prints current call stack (stack trace). Call stack is printed to log or to 'output' variable if argument is used.
+	\param output optional argument to get call stack to string variable instead of output
+	\code
+		Debug.DumpStack(); // print stack to log
+
+		string text;
+		Debug.DumpStack(text); // print stack to 'text' variable
+	\endcode
+
+	Output:
+	\verbatim
+		-- Stack trace --
+		 SaveFile() Scripts\Entities\Modules\ModuleBase\ModuleFileHandler.c : 51
+		 SaveConfigToFile() Scripts\Entities\Modules\ModuleBase\ModuleFileHandler\ModuleLocalProfile.c : 114
+		 SaveParameterArray() Scripts\Entities\Modules\ModuleBase\ModuleFileHandler\ModuleLocalProfile.c : 133
+		 SetParameterArray() Scripts\Entities\Modules\ModuleBase\ModuleFileHandler\ModuleLocalProfile.c : 231
+		 PresetAdd() Scripts\Entities\Modules\ModuleBase\ModuleFileHandler\ModuleLocalProfile\ModuleLocalProfileUI.h : 46
+		 OnKeyPress() Scripts/mission/missionGameplay.c : 215
+		 OnKeyPress() Scripts/DayZGame.c : 334
+		 -----------------
+	\endverbatim
+	*/
+	static proto void DumpStack(out string output = string.Empty);
+	/*!
+	Dump all allocated script objects with callstack of its allocation into
+	output/log. This can only be used together with `-checkInstance` CLI param.
+	*/
+	static proto void DumpInstances(bool csvFormatting);
+	//! Dialog box with error message.
+	static proto void Error2(string title, string err);
+	//! Dialog box with error message.
+	static proto void Error(string err);
+	//! Starts measuring time until EndTimeMeasure() is called.
+	static proto void BeginTimeMeasure();
+	//! Ends time measurement which began with last BeginTimeMeasure() call.
+	static proto void EndTimeMeasure(string title);
+	//! Prints content of variable to console/log. Should be used for critical messages so it will appear in debug log.
+	static proto void DPrint(string var);
+	//! \warning Internal function for native (C++) code developers.
+	static proto void Break(bool condition = true, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
+	//! \warning Internal function for native (C++) code developers.
+	static proto void CompileBreak();
+	/*!
+	Gets key state.
+	\param key Key code.
+	\return 0 when not pressed, Bit 15 is set when pressed, bits 0-14 contain
+	count of presses.
+	*/
+	static proto int KeyState(KeyCode key);
+	/*!
+	Returns state of mouse button. It's combination of number of
+	release/pressed edges and mask Debug.MB_PRESSED_MASK that is set when
+	button is pressed. If you want just to check if button is pressed, use:
+	\code
+		if(GetMouseState(MouseState.LEFT) & Debug.MB_PRESSED_MASK))
+			Print("left button pressed");
+	\endcode
+	*/
+	static proto int GetMouseState(MouseState index);
+	/*!
+	Clears the key state. Call this function if you want to overcome
+	autorepeating in reporting key state. If called, the KeyState returns
+	pressed only after the key is released and pressed again.
+	*/
+	static proto void ClearKey(KeyCode key);
+}
+
+/*!
+\}
+*/
+
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Entities
+\{
+*/
+
+class IEntity: Managed
+{
+	/*!
+	Event when touched by other entity.
+	\note You need to have TouchComponent in entity to receive this event.
+
+	\param owner The owner entity
+	\param other Entity who touched us
+	\param touchTypesMask Bitmask of touch types TODO
+	*/
+	event protected void EOnTouch(IEntity owner, IEntity other, int touchTypesMask);
+	/*!
+	Event after entity is allocated and initialized.
+	\param owner The owner entity
+	*/
+	event protected void EOnInit(IEntity owner);
+	/*!
+	Event when we are visible.
+	\param owner The owner entity
+	\param frameNumber Frame number
+	*/
+	event protected void EOnVisible(IEntity owner, int frameNumber);
+	/*!
+	Event every frame.
+	\param owner The owner entity
+	\param timeSlice Time passed since last frame
+	*/
+	event protected void EOnFrame(IEntity owner, float timeSlice);
+	/*!
+	Event after physics update.
+	\param owner The owner entity
+	\param timeSlice Time passed since last frame
+	*/
+	event protected void EOnPostFrame(IEntity owner, float timeSlice);
+	/*!
+	Event from animation system.
+	\param owner The owner entity
+	\param type
+	\param slot
+	*/
+	event protected void EOnAnimEvent(IEntity owner, int type, int slot);
+	/*!
+	Event before every physics fixed step (can be multiple calls per engine update)
+	\param owner The owner entity
+	\param timeSlice Time slice of physics fixed step
+	*/
+	event protected void EOnSimulate(IEntity owner, float timeSlice);
+	/*!
+	Event after every physics fixed step (can be multiple calls per engine update)
+	\param owner The owner entity
+	\param timeSlice Time slice of physics fixed step
+	*/
+	event protected void EOnPostSimulate(IEntity owner, float timeSlice);
+	/*!
+	Event when joint attached to RigidBody of this entity is broken.
+	\param owner The owner entity
+	\param other Other Entity attached to the joint
+	*/
+	event protected void EOnJointBreak(IEntity owner, IEntity other);
+	/*!
+	Event when physics engine has moved with this Entity.
+	\param owner The owner entity
+	*/
+	event protected void EOnPhysicsMove(IEntity owner);
+	/*!
+	Event when physics engine registered contact with other RigidBody.
+	\param owner The owner entity
+	\param other Other Entity who contacted us
+	\param contact Structure describing the contact
+	*/
+	event protected void EOnContact(IEntity owner, IEntity other, Contact contact);
+	/*!
+	Event when a RigidBody active state is changed between consecutive fixed steps
+	\param owner The owner entity
+	*/
+	event protected void EOnPhysicsActive(IEntity owner, bool activeState);
+	/*!
+	Event every fixed frame.
+	\param owner The owner entity
+	\param timeSlice Fixed time step
+	*/
+	event protected void EOnFixedFrame(IEntity owner, float timeSlice);
+	/*!
+	Event after physics update every fixed frame.
+	\param owner The owner entity
+	\param timeSlice Fixed time step
+	*/
+	event protected void EOnFixedPostFrame(IEntity owner, float timeSlice);
+	//! EntityEvent.EV_USER+0
+	protected void EOnUser0(IEntity other, int extra);
+	//! EntityEvent.EV_USER+1
+	protected void EOnUser1(IEntity other, int extra);
+	//! EntityEvent.EV_USER+2
+	protected void EOnUser2(IEntity other, int extra);
+	//! EntityEvent.EV_USER+3
+	protected void EOnUser3(IEntity other, int extra);
+	//! EntityEvent.EV_USER+4
+	protected void EOnUser4(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy018(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy019(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy020(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy021(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy022(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy023(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy024(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy025(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy026(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy027(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy028(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy029(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy030(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy031(IEntity other, int extra);
+	//-----------------------------------------------------------------------
+	//! protected script Constructor
+	protected void IEntity(IEntitySource src, IEntity parent);
+
+	/*!
+	Return unique entity ID.
+	\code
+		ItemBase apple = g_Game.CreateObject( "FruitApple", String2Vector("0 10 0"), false );
+		Print( apple.GetID() );
+
+		>> 0
+	\endcode
+	*/
+	proto external EntityID GetID();
+	/*!
+	Returns parent of this entity (entity on upper level
+	of hierarchy).
+	\return
+	Pointer to parent entity, or nullptr, when we are not child.
+	*/
+	proto external IEntity GetParent();
+	/*!
+	Returns top-parent of this entity.
+	\return
+	Pointer to root entity, or self, when we are not child.
+	*/
+	proto external IEntity GetRootParent();
+	/*!
+	Returns first child from this level of hierarchy
+	if there is any.
+	\return
+	Pointer to child entity, or nullptr
+	*/
+	proto external IEntity GetChildren();
+	/*!
+	Returns next sibling of this entity (next entity on this level
+	of hierarchy).
+	\return
+	Pointer to sibling entity, or nullptr
+	*/
+	proto external IEntity GetSibling();
+	//! Returns visual object set to this Entity. No reference is added.
+	proto external VObject GetVObject();
+	proto external EntityPrefabData GetPrefabData();
+	proto external EntityComponentPrefabData FindComponentData(typename typeName);
+	proto external BaseWorld GetWorld();
+	//! Set fixed LOD. Use -1 for non-fixed LOD.
+	proto external void SetFixedLOD(int lod);
+	/*!
+	Returns world transformation of Entity. It returns only as many vectors as is array length.
+	\code
+		Man player = g_Game.GetPlayer();
+
+		vector mat[4];
+		player.GetTransform(mat);
+		Print( mat );
+
+		>> <0.989879,-0,0.141916>,<0,1,0>,<-0.141916,0,0.989879>,<2545.08,15.6754,2867.49>
+	\endcode
+	\param mat `vector[1...4]` matrix to be get
+	*/
+	proto external void GetTransform(out vector mat[]);
+	//! See IEntity#GetTransform
+	proto external void GetWorldTransform(out vector mat[]);
+	//! See IEntity#GetTransform
+	proto external void GetLocalTransform(out vector mat[]);
+	/*!
+	Transforms local vector to parent(world) space.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.VectorToParent("1 2 3") );
+
+		>> <2.89791,2,1.26575>
+	\endcode
+	\param vec local space vector to transform
+	\return parent space vector
+	*/
+	proto external vector VectorToParent(vector vec);
+	/*!
+	Transforms local position to parent(world) space.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.CoordToParent("1 2 3") );
+
+		>> <2549,17.6478,2857>
+	\endcode
+	\param coord local position to transform
+	\return position in parent space
+	*/
+	proto external vector CoordToParent(vector coord);
+	/*!
+	Transforms world space vector to local space.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.VectorToLocal("2 1 5") );
+
+		>> <-0.166849,1,5.38258>
+	\endcode
+	\param vec world space vector to transform
+	\return local space vector
+	*/
+	proto external vector VectorToLocal(vector vec);
+	/*!
+	Transforms world space position to local space.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.CoordToLocal("500 10 155") );
+
+		>> <15254,-54.2004,8745.53>
+	\endcode
+	\param coord world space position to transform
+	\return position in local space
+	*/
+	proto external vector CoordToLocal(vector coord);
+	/*!
+	Returns orientation of Entity in world space (Yaw, Pitch, Roll).
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetYawPitchRoll() );
+
+		>> <180,-76.5987,180>
+	\endcode
+	\return entity orientation
+	*/
+	proto external vector GetYawPitchRoll();
+	/*!
+	Sets angles for entity (Yaw, Pitch, Roll).
+	\code
+		Man player = g_Game.GetPlayer();
+		player.SetYawPitchRoll("180 50 180" );
+		Print( player.GetYawPitchRoll() );
+
+		>> <-180,50,-180>
+	\endcode
+	\param angles angles to be set
+	*/
+	proto external void SetYawPitchRoll(vector angles);
+	//! See IEntity#GetTransformAxis
+	proto external vector GetWorldTransformAxis(int axis);
+	//! See IEntity#GetTransformAxis
+	proto external vector GetTransformAxis(int axis);
+	//! See IEntity#GetTransformAxis
+	proto external vector GetLocalTransformAxis(int axis);
+	//! See IEntity#SetTransform. Returns `false`, if there is no change in transformation.
+	proto external bool SetLocalTransform(vector mat[4]);
+	//! See IEntity#SetTransform. Returns `false`, if there is no change in transformation.
+	proto external bool SetWorldTransform(vector mat[4]);
+	//! Returns pivot ID from hierarchy component.
+	proto external TNodeId GetPivot();
+	/*!
+	Sets entity world transformation.
+	\code
+		vector mat[4];
+		Math3D.MatrixIdentity( mat )
+
+		Man player = g_Game.GetPlayer();
+		player.SetTransform( mat );
+
+		vector outmat[4];
+		player.GetTransform(outmat );
+		Print( outmat );
+
+		>> <1,0,0>,<0,1,0>,<0,0,1>,<0,0,0>
+	\endcode
+	\param mat matrix to be set
+	*/
+	proto external bool SetTransform(vector mat[4]);
+	//! Same as GetLocalYawPitchRoll(), but returns rotation vector around X, Y and Z axis.
+	proto external vector GetLocalAngles();
+	/*!
+	Returns local orientation when it's in hierarchy (Yaw, Pitch, Roll).
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetLocalYawPitchRoll() );
+
+		>> <180,-57.2585,180>
+	\endcode
+	\return local orientation
+	*/
+	proto external vector GetLocalYawPitchRoll();
+	//! Same as GetYawPitchRoll(), but returns rotation vector around X, Y and Z axis.
+	proto external vector GetAngles();
+	//! Same as SetYawPitchRoll(), but sets rotation around X, Y and Z axis.
+	proto external void SetAngles(vector angles);
+	/*!
+	Returns origin of Entity.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetOrigin() );
+
+		>> <2577.02,15.6837,2924.27>
+	\endcode
+	\return entity origin
+	*/
+	proto external vector GetOrigin();
+	/*!
+	Sets origin for entity.
+	\code
+		Man player = g_Game.GetPlayer();
+		player.SetOrigin("2550 10 2900" );
+		Print( player.GetOrigin() );
+
+		>> <2550,10,2900>
+	\endcode
+	\param orig origin to be set
+	*/
+	proto external void SetOrigin(vector orig);
+	proto external void SetScale(float scale);
+	proto external float GetScale();
+	/*!
+	Returns local bounding box of model on Entity.
+	\code
+		Man player = g_Game.GetPlayer();
+
+		vector mins, maxs;
+		player.GetBounds(mins, maxs );
+
+		Print( mins );
+		Print( maxs );
+
+		>> <0,0,0>
+		>> <0,0,0>
+	\endcode
+	\param[out] mins minimum point of bounding box
+	\param[out] maxs maximum point of bounding box
+	*/
+	proto external void GetBounds(out vector mins, out vector maxs);
+	/*!
+	Returns quantized world-bound-box of Entity.
+	\code
+		Man player = g_Game.GetPlayer();
+
+		vector mins, maxs;
+		player.GetWorldBounds( mins, maxs );
+
+		Print( mins );
+		Print( maxs );
+
+		>> <2547.2,15.5478,2852.85>
+		>> <2548.8,17.5478,2855.05>
+	\endcode
+	\param[out] mins minimum point of bounding box
+	\param[out] maxs maximum point of bounding box
+	*/
+	proto external void GetWorldBounds(out vector mins, out vector maxs);
+	//! Dynamic event invocation. Parameters are the same as in `IEntity::EOnXXXX()` methods.
+	proto external volatile void SendEvent(notnull IEntity actor, EntityEvent e, void extra);
+	proto external string GetName();
+	//! Sets component flags.
+	proto external int SetVComponentFlags(VCFlags flags);
+	/*!
+	Sets the visual object to this entity. Reference is added and released
+	upon entity destruction.
+	\param object Handle to object got by GetObject().
+	\param options String, dependent on object type. The only one supported for
+	XOB objects:
+	```"$remap 'original material name' 'new material'; [$remap 'another original material name' 'another new material']"```
+	*/
+	proto external void SetObject(VObject object, string options);
+	/*!
+	Sets Entity flags. It's OR operation, not rewrite. Returns previous flags.
+	\code
+		Man player = g_Game.GetPlayer();
+		player.SetFlags(EntityFlags.VISIBLE|EntityFlags.TRACEABLE );
+		Print( player.GetFlags() );
+
+		>> 1610612747
+	\endcode
+	\param flags Flags to be set
+	\param recursively Flags will be recursively applied to children of hierarchy too
+	\return previous flags
+	*/
+	proto external EntityFlags SetFlags(EntityFlags flags, bool recursively = false);
+	/*!
+	Clear Entity flags. Returns cleared flags.
+	\code
+		Man player = g_Game.GetPlayer();
+		player.ClearFlags(EntityFlags.VISIBLE|EntityFlags.TRACEABLE );
+		Print( player.GetFlags() );
+
+		>> 1610612744
+	\endcode
+	\param flags Flags to be set
+	\param recursively Flags will be recursively applied to children of hierarchy too
+	\return cleared flags
+	*/
+	proto external EntityFlags ClearFlags(EntityFlags flags, bool recursively = false);
+	/*!
+	Returns Entity flags.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetFlags() );
+
+		>> 1610612745
+	\endcode
+	\return Entity flags
+	*/
+	proto external EntityFlags GetFlags();
+	/*!
+	Sets event mask.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetEventMask() );
+		player.SetEventMask( EntityEvent.VISIBLE );
+		Print( player.GetEventMask() );
+
+		>> 0
+		>> 128
+	\endcode
+	\param e Combined mask of one or more members of EntityEvent enum
+	*/
+	proto external EntityEvent SetEventMask(EntityEvent e );
+	/*!
+	Clears event mask.
+	\code
+		Man player = g_Game.GetPlayer();
+		player.SetEventMask(EntityEvent.VISIBLE );
+		Print( player.GetEventMask() );
+		player.ClearEventMask(EntityEvent.ALL );
+		Print( player.GetEventMask() );
+
+		>> 128
+		>> 0
+	\endcode
+	\param e event mask
+	\return event mask
+	*/
+	proto external EntityEvent ClearEventMask(EntityEvent e);
+	/*!
+	Returns current event mask.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetEventMask() );
+
+		>> 0
+	\endcode
+	\return current event mask
+	*/
+	proto external EntityEvent GetEventMask();
+	//! \returns `true` when entity is loaded from map, `false` when dynamically spawned.
+	proto external bool IsLoaded();
+	//! \returns `true` if entity is ready to be deleted.
+	proto external bool IsRemoved();
+	//! \returns `true` if entity was deleted (entity pointer valid until the end of the frame).
+	proto external bool IsDeleted();
+	/*!
+	Updates entity state/position. Should be called when you want to manually commit position changes etc
+	before trace methods etc. Entity is updated automatically at the end and the beginning of simulation step,
+	when it has EntityFlags.TFL_ACTIVE flag set.
+	\returns Mask with flags:
+	- EntityFlags.UPDATE - hierarchy has been updated
+	- EntityFlags.UPDATE_MDL - model hierarchy has been updated
+	*/
+	proto external int Update();
+	//! Add Entity to hierarchy. Pivot is pivot index, or -1 for center of parent.
+	proto external int AddChild(notnull IEntity child, TNodeId pivot, EAddChildFlags flags = EAddChildFlags.AUTO_TRANSFORM);
+	//! Remove Entity from hierarchy.
+	proto external void RemoveChild(notnull IEntity child, bool keepTransform = false);
+	proto external void SetName(string name);
+	//! Sets visibility mask for cameras, where Entity will be rendered.
+	proto external int SetCameraMask(int mask);
+	proto external Physics GetPhysics();
+	proto external Particles GetParticles();
+	proto external Animation GetAnimation();
+	//! Updates animation (either xob, or particle, whatever).
+	proto external int Animate(float speed, int loop);
+	//! Updates animation (either xob, or particle, whatever).
+	proto external int AnimateEx(float speed, int loop, out vector lin, out vector ang);
+	[Obsolete("Use GetAnimation().SetBone() instead")]
+	proto external void	SetBone(TNodeId bone, vector angles, vector trans, float scale);
+	[Obsolete("Use GetAnimation().SetBoneMatrix() instead")]
+	proto external bool	SetBoneMatrix(TNodeId bone, vector mat[4]);
+	[Obsolete("Use GetAnimation().GetBoneMatrix() instead")]
+	proto external bool	GetBoneMatrix(TNodeId bone, out vector mat[4]);
+	[Obsolete("Use GetAnimation().GetBoneIndex() instead")]
+	proto external TNodeId	GetBoneIndex(string boneName);
+	[Obsolete("Use GetAnimation().GetBoneNames() instead")]
+	proto external void	GetBoneNames(out notnull array<string> boneNames);
+	[Obsolete("Use GetAnimation().GetBoneLocalMatrix() instead")]
+	proto external bool	GetBoneLocalMatrix(TNodeId bone, out vector mat[4]);
+	/*!
+	Finds first occurance of the coresponding component.
+	\param typeName type of the component
+	*/
+	proto external Managed FindComponent(typename typeName);
+	/*!
+	Finds all occurances of the coresponding component.
+	\param typeName type of the component
+	\param outComponents array to fill with selected components
+	*/
+	proto external int FindComponents(typename typeName, notnull array<Managed> outComponents);
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Math
+\{
+*/
+
+sealed class Math
+{
+	private void Math();
+	private void ~Math();
+
+	static const float PI = 3.14159265358979;
+	static const float PI2 = 6.28318530717958;
+	static const float PI_HALF = 1.570796326794;
+	static const float RAD2DEG = 57.2957795130823208768;
+	static const float DEG2RAD = 0.01745329251994329577;
+	static const float E = 2.71828182845905;
+
+	/*!
+	Returns value `f` rounded to the closest whole number.
+	\code
+		Print( Math.Round(5.3) );
+		Print( Math.Round(5.8) );
+
+		>> 5
+		>> 6
+	\endcode
+	*/
+	static proto float Round(float f);
+	/*!
+	Returns value `f` rounded down to the closest whole number.
+	\code
+		Print( Math.Floor(5.3) );
+		Print( Math.Floor(5.8) );
+
+		>> 5
+		>> 5
+	\endcode
+	*/
+	static proto float Floor(float f);
+	/*!
+	Returns value `f` rounded up to the closest whole number.
+	\code
+		Print( Math.Ceil(5.3) );
+		Print( Math.Ceil(5.8) );
+
+		>> 6
+		>> 6
+	\endcode
+	*/
+	static proto float Ceil(float f);
+	/*!
+	Returns lower of two values `x` and `y`.
+	\code
+		Print( Math.Min(5.3, 2.8) );
+
+		>> 2.8
+	\endcode
+	*/
+	static proto float Min(float x, float y);
+	/*!
+	Returns larger of two values `x` and `y`.
+	\code
+		Print( Math.Max(5.3, 2.8) );
+
+		>> 5.3
+	\endcode
+	*/
+	static proto float Max(float x, float y);
+	/*!
+	Returns sine of an angle specified in radians.
+	\code
+		Print( Math.Sin(0.785398) ); // (45)
+
+		>> 0.707107
+	\endcode
+	*/
+	static proto float Sin(float angleRad);
+	/*!
+	Returns cosine of an angle specified in radians.
+	\code
+		Print( Math.Cos(0.785398) ); // (45)
+
+		>> 0.707107
+	\endcode
+	*/
+	static proto float Cos(float angleRad);
+	/*!
+	Returns tangent of an angle specified in radians.
+	\code
+		Print( Math.Tan(0.785398) ); // (45)
+
+		>> 1
+	\endcode
+	*/
+	static proto float Tan(float angleRad);
+	/*!
+	Returns angle in radians from sine.
+	\code
+		Print( Math.Asin(0.707107) ); // (sine 45)
+
+		>> 0.785398
+	\endcode
+	*/
+	static proto float Asin(float s);
+	/*!
+	Returns angle in radians from cosine.
+	\code
+		Print( Math.Acos(0.707107) ); // (cosine 45)
+
+		>> 0.785398
+	\endcode
+	*/
+	static proto float Acos(float c);
+	/*!
+	Returns angle in radians from tangent. Tangent is specified as 2D coordinates
+	`[x,y]` of a point on circle centered at coordinates `[0,0]`.
+	\code
+		Print ( Math.Atan2(1, 1) );
+
+		>> 0.785398
+	\endcode
+	\param y Y coordinate on the circle.
+	\param x X coordinate on the circle.
+	*/
+	static proto float Atan2(float y, float x);
+	/*!
+	Returns `v` raised to the `power`.
+	\code
+		Print( Math.Pow(2, 4) ); // (2*2*2*2)=16
+
+		>> 16
+	\endcode
+	*/
+	static proto float Pow(float v, float power);
+	/*!
+	Returns remainder of division `v/div`.
+	\code
+		Print( Math.Mod(5.0, 2.0) );
+
+		>> 1.0
+	\endcode
+	*/
+	static proto float Mod(float v, float div);
+	/*!
+	Returns absolute value of `f`.
+	\code
+		Print( Math.AbsFloat(-12.5) );
+
+		>> 12.5
+	\endcode
+	*/
+	static proto float AbsFloat(float f);
+	/*!
+	Returns absolute value of `i`.
+	\code
+		Print( Math.AbsInt(-12) );
+
+		>> 12
+	\endcode
+	*/
+	static proto int AbsInt(int i);
+	/*!
+	Returns square root of `val`.
+	\code
+		Print( Math.Sqrt(25) );
+
+		>> 5
+	\endcode
+	*/
+	static proto float Sqrt(float val);
+	/*!
+	Returns the binary (base-`2`) logarithm of `x`.
+	\code
+		Print( Math.Log2(1.0) );
+
+		>> 0.0
+	\endcode
+	\param x Value whose logarithm is calculated.
+	\return Result depends on the value of `x`:
+		- If `x` is positive, result is binary logarithm of `x`.
+		- If `x` is negative or zero, an error occurs and result is undefined.
+	*/
+	static proto float Log2(float x);
+	/*!
+	Returns the common (base-`10`) logarithm of `x`.
+	\code
+		Print( Math.Log10(100.0) );
+
+		>> 2.0
+	\endcode
+	\param x Value whose logarithm is calculated.
+	\return Result depends on the value of `x`:
+	- If `x` is positive, result is common logarithm of `x`.
+	- If `x` is negative or zero, an error occurs and result is undefined.
+	*/
+	static proto float Log10(float x);
+	/*!
+	Returns the natural (base-`e`) logarithm of `x`.
+	\code
+		Print( Math.Log2(1.0) );
+
+		>> 0.0
+	\endcode
+	\param x Value whose logarithm is calculated.
+	\return Result depends on the value of `x`:
+	- If `x` is positive, result is natural logarithm of `x`.
+	- if `x` is negative or zero, an error occurs and result is undefined.
+	*/
+	static proto float Log(float x);
+	/*!
+	Does the CD smoothing function - easy in | easy out / S shaped smoothing
+	\code
+		val = EnfMath.SmoothCD(val, varTarget, valVelocity, 0.3, 1000, dt);
+	\endcode
+	\param val actual value
+	\param target value we are reaching for -> Target
+	\param velocity Acceleration/deceleration rate, need to be zeroed when filter is about to be reset.
+	\param smoothTime Smoothing parameter, 0.1 .. 0.4 are reasonable values, 0.1 is sharp, 0.4 is very smooth.
+	\param maxVelocity Maximum value change when multiplied by `dt`.
+	\param dt Time delta.
+	\return smoothed/filtered value
+	*/
+	static proto float SmoothCD(float val, float target, inout float velocity, float smoothTime, float maxVelocity, float dt);
+	/*!
+	SmoothCD() version that wraps around on `[-PI,PI]` range.
+	\code
+		val = EnfMath.SmoothCDPI2PI(val, varTarget, valVelocity, 0.3, 1000, dt);
+	\endcode
+	*/
+	static proto float SmoothCDPI2PI(float val, float target, inout float velocity, float smoothTime, float maxVelocity, float dt);
+	/*!
+	Does spring smoothing function.
+	\param val actual value
+	\param target value we are reaching for -> Target
+	\param velocity kind of memory and actual accel/decel rate, need to be zeroed when filter is about to be reset
+	\param spring spring amount 0...1
+	\param damping damper amount 0...1
+	\param dt delta time
+	*/
+	static proto float SmoothSpring(float val, float target, inout float velocity, float spring, float damping, float dt);
+	/*!
+	Returns value (between -1 and 1) of Perlin noise for given parameters x, y, z
+	To get 1D or 2D noise simply leave the respective parameters to 0 (y and z or just z)
+	*/
+	static proto float PerlinNoise(float x, float y = 0, float z = 0);
+	//! PerlinNoise() but normalized to (0, 1).
+	static proto float PerlinNoise01(float x, float y = 0, float z = 0);
+	//! Returns value (between -1 and 1) of Simplex noise for given input `x`.
+	static proto float SimplexNoise1D(float x);
+	/*!
+	Returns a random `int` number between `min` [inclusive] and `max` [exclusive].
+	\code
+		Print( Math.RandomInt(0, 1) );	// only 0
+		Print( Math.RandomInt(0, 2) );	// 0 or 1
+
+		>> 0
+		>> 1
+	\endcode
+	\param min Range starts [inclusive]
+	\param max Range ends [exclusive]
+	\return Random number in range
+	*/
+	static proto int RandomInt(int min, int max);
+	/*!
+	Sets the seed for the random number generator.
+	\code
+	Print( Math.Randomize(5) );
+
+	>> 5
+	\endcode
+	\param seed New seed for the random number generator or -1 to use current time as seed.
+	\return Returns new seed.
+	*/
+	static proto int Randomize(int seed);
+	/*!
+	Returns a random `float` number between `min` [inclusive] and `max` [exclusive].
+	\code
+		Print( Math.RandomFloat(0,1) );
+		Print( Math.RandomFloat(0,2) );
+
+		>> 0.597561
+		>> 1.936456
+	\endcode
+	\param min Range start [inclusive]
+	\param max Range end [exclusive]
+	\return Random number in range
+	*/
+	static proto float RandomFloat(float min, float max);
+	//! Returns random number with Gauss distribution (http://en.wikipedia.org/wiki/File:Normal_Distribution_PDF.svg)
+	static proto float RandomGaussFloat(float sigma, float mean);
+	/*!
+	Returns a random `int` number between `min` [inclusive] and `max` [inclusive].
+	\code
+		Print( Math.RandomIntInclusive(0, 1) );	// 0 or 1
+		Print( Math.RandomIntInclusive(0, 2) );	// 0, 1, 2
+
+		>> 1
+		>> 2
+	\endcode
+	\param min Range start [inclusive]
+	\param max Range end [inclusive]
+	\return Random number in range
+	*/
+	static proto int RandomIntInclusive(int min, int max);
+	/*!
+	Returns a random `float` number between `min` [inclusive] and `max` [inclusive].
+	\code
+		Print( Math.RandomFloatInclusive(0, 1) );	// 0.0 .. 1.0
+		Print( Math.RandomFloatInclusive(1, 2) );	// 1.0 .. 2.0
+
+		>> 0.3
+		>> 2.0
+	\endcode
+	\param min Range start [inclusive]
+	\param max Range end [inclusive]
+	\return Random number in range
+	*/
+	static proto float RandomFloatInclusive(float min, float max);
+	/*!
+	Returns a random `float` number in range `[0.0, 1.0]` inclusive on both ends.
+	\code
+		Print( Math.RandomFloat01() );	// 0.0 .. 1.0
+
+		>> 0.3
+		>> 1.0
+	\endcode
+	\return Random number in range 0.0 .. 1.0
+	*/
+	static proto float RandomFloat01();
+	/*!
+	Loop the value in given range (similar to modulo).
+	\code
+		Print( Math.Repeat(370, 360) );
+		Print( Math.Repeat(-20, 360) );
+
+		>> 10
+		>> 340
+	\endcode
+	*/
+	static proto float Repeat(float value, float range);
+	/*!
+	Re-maps a number from one range to another.
+	\code
+		Print( Math.Map(0, -5, 5, 100, 200) );
+
+		>> 150
+	\endcode
+	*/
+	static proto float Map(float value, float fromLow, float fromHigh, float toLow, float toHigh);
+	/*!
+	Re-maps angle from one range to another.
+	\code
+		Print( Math.MapAngle(-45, 360, -Math.PI, Math.PI) );
+
+		>> -0.785398
+	\endcode
+	*/
+	static proto float MapAngle(float value, float fFromRange = 360, float fToLow = -180, float fToHigh = 180);
+	/*!
+	Returns `true` when `value` is greater than or equal to `min` and less than or
+	equal to `max`.
+	\code
+		Print( Math.IsInRange(-0.1, 0, 1) );
+		Print( Math.IsInRange(2, 0, 1) );
+		Print( Math.IsInRange(0.5, 0, 1) );
+		Print( Math.IsInRange(0, 0, 1) );
+		Print( Math.IsInRange(1, 0, 1) );
+
+		>> false
+		>> false
+		>> true
+		>> true
+		>> true
+	\endcode
+	*/
+	static proto bool IsInRange(float value, float min, float max);
+	/*!
+	Returns `true` when `value` is greater than `min` and less than `max`.
+	\code
+		Print( Math.IsInRange(-0.1, 0, 1) );
+		Print( Math.IsInRange(2, 0, 1) );
+		Print( Math.IsInRange(0.5, 0, 1) );
+		Print( Math.IsInRange(0, 0, 1) );
+		Print( Math.IsInRange(1, 0, 1) );
+
+		>> false
+		>> false
+		>> true
+		>> false
+		>> false
+	\endcode
+	*/
+	static proto bool IsInRangeSharp(float value, float min, float max);
+	/*!
+	Clamps `value` to range specified by `[min, max]`.
+	- When `value` is less than `min`, returns `min`.
+	- When `value` is greater than `max`, returns `max`.
+	- In all other cases, returns `value`.
+
+	\code
+		Print( Math.Clamp(-0.1, 0, 1) );
+		Print( Math.Clamp(2, 0, 1) );
+		Print( Math.Clamp(0.5, 0, 1) );
+
+		>> 0
+		>> 1
+		>> 0.5
+	\endcode
+	*/
+	static proto float Clamp(float value, float min, float max);
+	/*!
+	Clamps `value` to range specified by `[min, max]`.
+	- When `value` is less than `min`, returns `min`.
+	- When `value` is greater than `max`, returns `max`.
+	- In all other cases, returns `value`.
+
+	\code
+		Print( Math.ClampInt(-1, 0, 1) );
+		Print( Math.ClampInt(2, 0, 1) );
+		Print( Math.ClampInt(1, 0, 2) );
+
+		>> 0
+		>> 1
+		>> 1
+	\endcode
+	*/
+	static proto int ClampInt(int value, int min, int max);
+	/*!
+	Does linear interpolation between `a` and `b` using `t`.
+	\code
+		Print( Math.Lerp(3, 7, 0.5) );
+		>> 5
+	\endcode
+	\param t Interpolation parameter, must be in range 0..1 [inclusive]
+	*/
+	static proto float Lerp(float a, float b, float t);
+	/*!
+	Calculates the interpolation parameter that produces the `value` by
+	interpolating from `a` to `b`. It's an inverse of Lerp().
+	\code
+		Print( Math.InverseLerp(3, 7, 5) );
+		>> 0.5
+	\endcode
+	*/
+	static proto float InverseLerp(float a, float b, float value);
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Math
+\{
+*/
+
+sealed class Math3D
+{
+	private void Math3D();
+	private void ~Math3D();
+
+	static proto float IntersectionRayBox(vector start, vector end, vector mins, vector maxs);
+	/*!
+	Tests whether intersection of ray and sphere exists and returns distance to intersection
+	from `raybase` and `raycos` (`I{01} = P + dir*t{01}`).
+	\param raybase start point of ray
+	\param raycos direction of ray
+	\param center sphere center
+	\param radius radius of sphere
+	*/
+	static proto float IntersectionRaySphere(vector raybase, vector raycos, vector center, float radius);
+	/*!
+	Tests whether sphere is intersecting cone.
+	\param origin Origin of sphere
+	\param radius Radius of sphere
+	\param conepos Position of top of cone
+	\param axis Orientation of cone in direction from top to bottom
+	\param angle Angle of cone in radians
+	\return `true` when intersects
+	*/
+	static proto bool IntersectionSphereCone(vector origin, float radius, vector conepos, vector axis, float angle);
+	/*!
+	Tests whether sphere is intersecting cone.
+	\param origin Origin of sphere
+	\param radius Radius of sphere
+	\param conepos Position of top of cone
+	\param axis Orientation of cone in direction from top to bottom
+	\param angle Angle of cone in radians
+	\return `true` when intersects
+	*/
+	static proto bool IntersectionWholeSphereCone(vector origin, float radius, vector conepos, vector axis, float angle);
+	/*!
+	Tests whether point is intersecting cylinder.
+	\param origin Origin of point
+	\param cylinderTip Tip of cylinder
+	\param cylinderAxis Axis of cylinder
+	\param cylinderRadius Radius of cylinder
+	\return `true` when intersects
+	*/
+	static proto bool IntersectionPointCylinder(vector origin, vector cylinderTip, vector cylinderAxis, float cylinderRadius);
+	/*!
+	Tests whether sphere is intersecting AABB.
+	\param origin Origin of sphere
+	\param radius Radius of sphere
+	\param mins minimum point of bounding box
+	\param maxs maximum point of bounding box
+	\return `true` when intersects
+	*/
+	static proto bool IntersectionSphereAABB(vector origin, float radius, vector mins, vector maxs);
+	/*!
+	Returns `true`, when bounding boxes intersect.
+	\code
+		vector mins1 = "1 1 1";
+		vector maxs1 = "3 3 3";
+		vector mins2 = "2 2 2";
+		vector maxs2 = "4 4 4";
+		Print( Math3D.IntersectionBoxBox(mins1, maxs1, mins2, maxs2) );
+
+		>> 1
+	\endcode
+	\param mins1 Minimum point of first bounding box.
+	\param maxs1 Maximum point of first bounding box.
+	\param mins2 Minimum point of second bounding box.
+	\param maxs2 Maximum point of second bounding box.
+	\return `true` when bounding boxes intersect, otherwise `false`.
+	*/
+	static proto bool IntersectionBoxBox(vector mins1, vector maxs1, vector mins2, vector maxs2);
+	/*!
+	Creates rotation matrix from direction and up vector.
+	\code
+		vector mat[4];
+		vector dir = "1 0 1";
+		vector up = "0 1 0";
+		DirectionAndUpMatrix( dir, up, mat );
+		Print( mat );
+
+		>> <0.707107,0,-0.707107>,<0,1,0>,<0.707107,0,0.707107>,<0,0,0>
+	\endcode
+	\param dir direction vector
+	\param up up vector
+	\param[out] mat created rotation matrix
+	*/
+	static proto void DirectionAndUpMatrix(vector dir, vector up, out vector mat[4]);
+	/*!
+	Transforms rotation matrix.
+	\code
+		vector mat0[3] = { "1.5 2.5 0", "0.1 1.3 0", "0 0 1" }; // rotation matrix
+		vector mat1[3] = { "1 0.4 0", "0 1 0", "0 1.3 2.7" }; // rotation matrix
+		vector res[3];
+		Math3D.MatrixMultiply3(mat0, mat1, res);
+		Print( res );
+
+		>> <1.54,3.02,0>,<0.1,1.3,0>,<0.13,1.69,2.7>
+	\endcode
+	\param mat0 first matrix
+	\param mat1 second matrix
+	\param[out] res result of first and second matrix multiplication
+	*/
+	static proto void MatrixMultiply3(vector mat0[3], vector mat1[3], out vector res[3]);
+	/*!
+	Transforms matrix.
+	\code
+		vector mat0[4] = { "2 0 0", "0 3 0", "0 1 0", "0 0 0" }; // scale matrix
+		vector mat1[4] = { "1 0 0", "0 1 0", "0 1 0", "2 4 1" }; // translation matrix
+		vector res[4];
+		Math3D.MatrixMultiply4(mat0, mat1, res);
+		Print( res );
+
+		>> <2,0,0>,<0,3,0>,<0,3,0>,<4,13,0>
+	\endcode
+	\param mat0 first matrix
+	\param mat1 second matrix
+	\param[out] res result of first and second matrix multiplication
+	*/
+	static proto void MatrixMultiply4(vector mat0[4], vector mat1[4], out vector res[4]);
+	/*!
+	Inverts matrix.
+	\code
+		vector mat[3] = { "2 0 0", "0 3 0", "0 0 1" }; // rotation matrix
+		vector res[3];
+		Math3D.MatrixGetInverse3(mat, res);
+		Print( res );
+
+		>> <0.5,0,0>,<0,0.333,0>,<0,0,1>
+	\endcode
+	\param mat input matrix
+	\param[out] res inverted matrix
+	*/
+	static proto void MatrixGetInverse3(vector mat[3], out vector res[3]);
+	/*!
+	Inverts matrix.
+	\code
+		vector mat[4] = { "2 0 0 0", "0 3 0 0", "0 0 1 0", "0 0 0 5" }; // rotation matrix
+		vector res[4];
+		Math3D.MatrixGetInverse4(mat, res);
+		Print( res );
+
+		>> <0.5,0,0,0>,<0,0.333,0,0>,<0,0,1,0>,<0,0,0,0.2>
+	\endcode
+	\param mat input matrix
+	\param[out] res inverted matrix
+	*/
+	static proto void MatrixGetInverse4(vector mat[4], out vector res[4]);
+	/*!
+	Invert-transforms rotation matrix.
+	\code
+		vector mat0[3] = { "1.5 2.5 0", "0.1 1.3 0", "0 0 1" }; // rotation matrix
+		vector mat1[3] = { "1 0.4 0", "0 1 0", "0 1.3 2.7" }; // rotation matrix
+		vector res[3];
+		Math3D.MatrixInvMultiply3(mat0, mat1, res);
+		Print( res );
+
+		>> <2.5,0.62,0>,<2.5,1.3,0>,<3.25,1.69,2.7>
+	\endcode
+	\param mat0 first matrix
+	\param mat1 second matrix
+	\param[out] res result of first and second matrix multiplication
+	*/
+	static proto void MatrixInvMultiply3(vector mat0[3], vector mat1[3], out vector res[3]);
+	/*!
+	Invert-transforms matrix.
+	\code
+		vector mat0[4] = { "2 0 0", "0 3 0", "0 0 1", "0 0 0" }; // scale matrix
+		vector mat1[4] = { "1 0 0", "0 1 0", "0 0 1", "2 4 1" }; // translation matrix
+		vector res[4];
+		Math3D.MatrixInvMultiply4(mat0, mat1, res);
+		Print( res );
+
+		>> <2,0,0>,<0,3,1>,<0,3,1>,<4,12,4>
+	\endcode
+	\param mat0 first matrix
+	\param mat1 second matrix
+	\param[out] res inverse result of first and second matrix multiplication
+	*/
+	static proto void MatrixInvMultiply4(vector mat0[4], vector mat1[4], out vector res[4]);
+	/*!
+	Converts rotation matrix to quaternion.
+	\code
+		vector mat[3];
+		vector rot = "70 15 45";
+		Math3D.AnglesToMatrix(rot, mat);
+		float d[4];
+		Math3D.MatrixToQuat( mat, d );
+		Print( d );
+
+		>> {0.241626,0.566299,-0.118838,0.778973}
+	\endcode
+	\param mat rotation matrix
+	\param[out] d created quaternion copy
+	*/
+	static proto void MatrixToQuat(vector mat[3], out float d[4]);
+	/*!
+	Returns angles of rotation matrix.
+	\code
+		vector mat[3];
+		Math3D.AnglesToMatrix( "70 15 45", mat );
+		vector ang = Math3D.MatrixToAngles( mat );
+		Print( ang );
+
+		>> <70,15,45>
+	\endcode
+	\param mat rotation matrix
+	\return yaw, pitch, roll angles in degrees
+	*/
+	static proto vector MatrixToAngles(vector mat[3]);
+	/*!
+	Returns angles and scale of rotation matrix.
+	\param mat rotation matrix
+	\param angles yaw, pitch, roll angles in degrees
+	\return scale of matrix
+	*/
+	static proto float MatrixToAnglesAndScale(vector mat[3], out vector angles);
+	static proto void MatrixFromForwardVec(vector forwardVec, out vector mat[3]);
+	static proto void MatrixFromUpVec(vector upVec, out vector mat[3]);
+	/*!
+	Creates rotation matrix from angles (yaw, pitch, roll in degrees).
+	\code
+		vector mat[3];
+		Math3D.AnglesToMatrix( "70 15 45", mat );
+		Print( mat );
+
+		>> <0.41382,-0.683013,-0.601869>,<0.069869,0.683013,-0.727057>,<0.907673,0.258819,0.330366>
+	\endcode
+	\param ang vector which contains angles
+	\param[out] mat created rotation matrix
+	*/
+	static proto void AnglesToMatrix(vector ang, out vector mat[3]);
+	/*!
+	Creates identity matrix.
+	\code
+		vector mat[4];
+		Math3D.MatrixIdentity4( mat );
+		Print( mat );
+
+		>> <1,0,0>,<0,1,0>,<0,0,1>,<0,0,0>
+	\endcode
+	\param[out] mat created identity matrix
+	*/
+	static proto void MatrixIdentity4(out vector mat[4]);
+	/*!
+	Creates identity matrix.
+	\code
+		vector mat[3];
+		Math3D.MatrixIdentity3( mat );
+		Print( mat );
+
+		>> <1,0,0>,<0,1,0>,<0,0,1>
+	\endcode
+	\param[out] mat created identity matrix
+	*/
+	static proto void MatrixIdentity3(out vector mat[3]);
+	/*!
+	Copy matrixes.
+	\param matSrc `vector[3]` or `vector[4]`
+	\param[out] matDst `vector[3]` or `vector[4]`
+	*/
+	static proto void MatrixCopy(vector matSrc[], out vector matDst[]);
+	//! Normalize matrix
+	static proto void MatrixNormalize(vector mat[]);
+	//! Scale matrix
+	static proto void MatrixScale(vector mat[], float scale);
+	/*!
+	Creates identity quaternion.
+	\code
+		float q[4];
+		Math3D.QuatIdentity( q );
+		Print( q );
+
+		>> {0,0,0,1}
+	\endcode
+	\param[out] q created identity quaternion
+	*/
+	static proto void QuatIdentity(out float q[4]);
+	/*!
+	Copies quaternion.
+	\code
+		float s[4] = { 2, 3, 4, 1 };
+		float d[4];
+		Math3D.QuatCopy( s, d );
+		Print( d );
+
+		>> {2,3,4,1}
+	\endcode
+	\param s quaternion to copy
+	\param[out] d created quaternion copy
+	*/
+	static proto void QuatCopy(float s[4], out float d[4]);
+	//! Converts quaternion to rotation matrix.
+	static proto void QuatToMatrix(float q[4], out vector mat[3]);
+	/*!
+	Normalizes quaternion.
+	\code
+		float quat[4] = {1, 1, 1, 1};
+		float length = QuatNormalize(quat);
+		Print(length);
+		>> {2}
+		Print(quat);
+		>> {0.5,0.5,0.5,0.5}
+	\endcode
+	\param quat in/out quaternion
+	\return length
+	*/
+	static proto float QuatNormalize(out float quat[4]);
+	/*!
+	Linear interpolation between `q1` and `q2` with weight `frac` (0...1).
+	\code
+		float q1[4] = { 1, 1, 1, 1 };
+		float q2[4] = { 2, 2, 2, 1 };
+		float qout[4];
+		Math3D.QuatLerp( qout, q1, q2, 0.5 );
+		Print( qout );
+
+		>> {1.5,1.5,1.5,1}
+	\endcode
+	\param[out] qout result quaternion
+	\param q1 first quaternion
+	\param q2 second quaternion
+	\param frac interpolation weight
+	*/
+	static proto void QuatLerp(out float qout[4], float q1[4], float q2[4], float frac);
+	/*!
+	Multiplies quaternions.
+	\code
+		float q1[4] = { 1, 2, 3, 1 };
+		float q2[4] = { 2, 2, 2, 1 };
+		float qout[4];
+		Math3D.QuatMultiply( qout, q1, q2 );
+		Print( qout );
+
+		>> {2,4,6,1}
+	\endcode
+	\param[out] qout result quaternion
+	\param q1 first quaternion
+	\param q2 second quaternion
+	*/
+	static proto void QuatMultiply(out float qout[4], float q1[4], float q2[4]);
+	//! Returns a float value equal to the angle between two quaternions.
+	static proto float QuatAngle(float q1[4], float q2[4]);
+	//! Returns a float value equal to the dot product of two quaternions.
+	static proto float QuatDot(float q1[4], float q2[4]);
+	//! Returns a quaternion `qout` that is rotated between quaternions `q1` and `q2`.
+	static proto void QuatRotateTowards(out float qout[4], float q1[4], float q2[4], float maxDegreesDelta);
+	//! Returns the norm of a quaternion.
+	static proto float QuatNorm(float quat[4]);
+	//! Returns the magnitude of a quaternion.
+	static proto float QuatLength(float quat[4]);
+	//! Inverse quaternion.
+	static proto void QuatInverse(out float qout[4], float q[4]);
+	//! Multiply each part of quaternion by scalar.
+	static proto void QuatScale(out float qout[4], float scale);
+	//! Conjugate quaternion.
+	static proto void QuatConjugate(out float qout[4], float q[4]);
+	//! Returns Angles vector (yaw, pitch, roll) from quaternion.
+	static proto vector QuatToAngles(float q[4]);
+	/*!
+	Computes curve. Knots array is used only for non-uniform curve types. For example,
+	CatmullRom and CurveProperty2D.
+	\code
+		auto points = new array<vector>();
+		points.Insert( Vector( 0, 0, 0) );
+			points.Insert( Vector( 5, 0, 0) );
+			points.Insert( Vector( 8, 3, 0) );
+			points.Insert( Vector( 6, 1, 0) );
+
+		float t = 0.5;
+		vector result = Math3D.Curve(ECurveType.CatmullRom, t, points);
+	\endcode
+	*/
+	static proto vector Curve(ECurveType type, float param, notnull array<vector> points, array<float> knots = null);
+	/*!
+	Evaluates a single curve from multicurve object.
+	\see Curve
+	*/
+	static proto vector Curve3(ECurveType type, float param, notnull Curve3 points, int curveIndex, array<float> knots = null);
+	/*!
+	Generates tessellation of a cubic, C0 Bezier spline.
+	\code
+		auto points = new array<vector>();
+		points.Insert(Vector(0, 0, -0.5));
+		points.Insert(Vector(1, 0, 1.5));
+
+		auto segmentPoints = new array<vector>();
+		segmentPoints.Insert(Vector(1, 0, -1));
+		segmentPoints.Insert(Vector(1, 0, 1));
+
+		array<vector> outPoints = new array<vector>();
+		Math3D.TesselateBezierSpline(points, segmentPoints, 0.05, 20, outPoints);
+	\endcode
+	\param points End points for each segment.
+	\param segmentPoints Points between end points.
+	\param maxDistance Maximum distance between two consecutive generated points.
+	\param maxPointsPerSegment Maximum number of points to generate for each segment of the spline.
+	\param outPoints Points of the resulting rasterization. Size of the array is changed.
+	*/
+	static proto void TessellateBezierSpline(array<vector> points, array<vector> segmentPoints, float maxDistance, int maxPointsPerSegment, array<vector> outPoints);
+	/*!
+	Generates tessellation of a cubic, C0 Hermite spline.
+	\code
+		auto points = new array<vector>();
+		points.Insert(Vector(0, 0, -0.5));
+		points.Insert(Vector(1, 0, 1.5));
+
+		auto tangents = new array<vector>();
+		tangents.Insert(Vector(1, 0, -1));
+		tangents.Insert(Vector(1, 0, 1));
+
+		array<vector> outPoints = new array<vector>();
+		Math3D.TesselateHermiteSpline(points, tangents, 0.05, 20, outPoints);
+	\endcode
+	\param points End points for each segment.
+	\param tangents Tangent vectors in respective points.
+	\param maxDistance Maximum distance between two consecutive generated points.
+	\param maxPointsPerSegment Maximum number of points to generate for each segment of the spline.
+	\param outPoints Points of the resulting rasterization. Size of the array is changed.
+	*/
+	static proto void TessellateHermiteSpline(array<vector> points, array<vector> tangents, float maxDistance, int maxPointsPerSegment, array<vector> outPoints);
+	/*!
+	Convert polygon to triangles.
+	\return number of generated vertices
+	*/
+	static proto int PolyToTriangles(vector in[], int num, out int indices[]);
+	//! Calculates squared distance of `point` to a line segment given by points `v0` and `v1`.
+	static proto float PointLineSegmentDistanceSqr(vector point, vector v0, vector v1);
+	//! Calculates distance of `point` to a line segment given by points `v0` and `v1`.
+	static proto float PointLineSegmentDistance(vector point, vector v0, vector v1);
+	//! Calculates distance of `point` to a parametric line given by a point on line and direction vector.
+	static proto float PointLineDistance(vector point, vector pointOnLine, vector dirVector);
+	/*!
+	Determines whether two line segments intersect or not.
+	\param p11 First point of the first segment
+	\param p12 Second point of the first segment
+	\param p21 First point of the second segment
+	\param p22 Second point of the second segment
+	\return `true` if the segments intersect, `false` otherwise.
+	*/
+	static proto bool IntersectionLineSegments(vector p11, vector p12, vector p21, vector p22);
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup System
+\{
+*/
+
+/*!
+@code
+// binary file write
+FileHandle fileW = FileIO.OpenFile("$profile:file.bin", FileMode.WRITE);
+if (fileW)
+{
+	int valInt = 4679;
+	float valFloat = 87.79;
+	string valStr = "Hello";
+	fileW.Write(valInt);
+	fileW.Write(valFloat);
+	fileW.Write(valStr);
+	fileW.Close();
+}
+
+// binary file read
+FileHandle fileR = FileIO.OpenFile("$profile:file.bin", FileMode.READ);
+if (fileR)
+{
+	int valInt;
+	float valFloat;
+	string valStr;
+	fileR.Read(valInt, 4);
+	fileR.Read(valFloat, 4);
+	fileR.Read(valStr, 5);
+	fileR.Close();
+
+	Print(valInt);
+	Print(valFloat);
+	Print(valStr);
+}
+
+// text file write
+FileHandle textFileW = FileIO.OpenFile("$profile:file.txt", FileMode.WRITE);
+if (textFileW)
+{
+	for (int i = 0; i < 10; i++)
+	{
+		textFileW.WriteLine("Line " + i);
+	}
+	textFileW.Close();
+}
+
+// text file read
+FileHandle textFileR = FileIO.OpenFile("$profile:file.txt", FileMode.READ);
+if (textFileR)
+{
+	string line;
+	while(textFileR.ReadLine(line) >= 0)
+	{
+		Print(line);
+	}
+	textFileR.Close();
+}
+@endcode
+*/
+sealed class FileHandle: Managed
+{
+	private void FileHandle();
+
+	/*!
+	Read raw data.
+	\param data supported types: int, float, string
+	\param length number of bytes to read. For int type is clamped [0,4]. For float its not used (always 4). For string it's not limited.
+	\return the total number of bytes successfully read.
+	*/
+	proto int Read(out void data, int length);
+	/*!
+	Get line from file, every next call of this function returns next line.
+	\return Count of characters or -1 if there is nothing to read
+	*/
+	proto int ReadLine(out string data);
+	/*!
+	Read raw data.
+	\param dataArray supported types: array<int>, array<float> (array content will be overwritten)
+	\param elementLength number of bytes from each array element to read (e.g. for reading array of bytes use 1, for shorts use 2, for int-s use 4). For int type its clamped [0,4] For float its not used (always 4).
+	\param numElements number of array elements to read.
+	\return the total number of bytes successfully read.
+	*/
+	proto int ReadArray(out notnull Managed dataArray, int elementLength, int numElements);
+	/*!
+	Write raw data.
+	\param data supported types: int, float, string
+	\param length number of bytes to write. For int type its clamped [0,4] For float its not used. For string its clamped [0, size of string]. If -1 value is used, the whole content of data is written.
+	\return the total number of bytes successfully written.
+	*/
+	proto int Write(void data, int length = -1);
+	/*!
+	Write to file and add newline (CARRIAGE RETURN + LINE FEED).
+	\param data Value to write
+	*/
+	proto void WriteLine(string data);
+	/*!
+	Write raw data.
+	\param dataArray supported types: array<int>, array<float>
+	\param elementLength number of bytes from each array element to write. For int type its clamped [0,4] For float its not used (always 4).
+	\param numElements number of array elements to write. If -1 value is used, all elements from array are written.
+	\return the total number of bytes successfully written.
+	*/
+	proto int WriteArray(out notnull Managed dataArray, int elementLength = 4, int numElements = -1);
+	/*!
+	Set current position in file.
+	\param pos offset from the file beginning
+	*/
+	proto void Seek(int pos);
+	/*!
+	Get current position in file.
+	\return offset from the file beginning
+	*/
+	proto int GetPos();
+	/*!
+	Get file size.
+	\return file size in bytes
+	*/
+	proto int GetLength();
+	//! Close the File.
+	proto void Close();
+	proto bool IsOpen();
+	//! Indicate that the End-of-File has been reached
+	proto bool IsEOF();
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup System
+\{
+*/
+
+class RandomGenerator: Managed
+{
+	proto external void SetSeed(int seed);
+	/*!
+	Generates random point in given polygon
+
+	\param polygon Consecutive floats give polygon in 2D (2 floats = Vector2)
+	\param bbMin Bounding box minimum corner
+	\param bbMax Bounding box maximum corner
+	\return Vector3 point in polygon
+	*/
+	proto external vector GenerateRandomPoint(array<float> polygon, vector bbMin, vector bbMax);
+	/*!
+	Generates a random point around `center` in range min/max radius
+
+	\param minRadius All generated points will be at least this far from center
+	\param maxRadius All generated points will be at most this far from center
+	\param center Position around which to generate. Vector2 XZ
+	\param uniform If false, has a small bias towards the center which may be desirable in some situations
+	\return Vector2 XZ set, Y = 0
+	*/
+	proto external vector GenerateRandomPointInRadius(float minRadius, float maxRadius, vector center, bool uniform = true);
+	//! Generates random float in [0, 1] range.
+	proto external float RandFloat01();
+	/*! Generates random float in [X, Y] range
+	\param x \p float Range starts[inclusive]
+	\param y \p float Range ends[inclusive]
+	*/
+	proto external float RandFloatXY(float x, float y);
+	/*!
+	\brief Returns random number with Gauss distribution (http://en.wikipedia.org/wiki/File:Normal_Distribution_PDF.svg)
+	\param mean
+	\param sigma
+	*/
+	proto external float RandGaussFloat(float sigma, float mean);
+	/*!
+	\brief Returns a random \p int number between and min [inclusive] and max [exclusive].
+		\param min \p int Range starts [inclusive]
+		\param max \p int Range ends [exclusive]
+		\return \p int - Random number in range
+		@code
+			RandomGenerator gen = new RandomGenerator();
+			Print( gen.RandInt(0, 1) );	// only 0
+			Print( gen.RandInt(0, 2) );	// 0 or 1
+
+			>> 0
+			>> 1
+		@endcode
+	*/
+	proto external int RandInt(int min, int max);
+	/*!
+	\brief Returns a random \p int number between and min [inclusive] and max [inclusive].
+		\param min \p int Range starts [inclusive]
+		\param max \p int Range ends [inclusive]
+		\return \p int - Random number in range
+		@code
+			RandomGenerator gen = new RandomGenerator();
+			Print( gen.RandIntInclusive(0, 1) );	// 0 or 1
+			Print( gen.RandIntInclusive(0, 2) );	// 0, 1, 2
+
+			>> 1
+			>> 2
+		@endcode
+	*/
+	proto external int RandIntInclusive(int min, int max);
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup System
+\{
+*/
+
+/*! Module containing compiled scripts.
+\code
+string watch = "GetGame().InPlayMode()";
+string code = string.Format("string WatchResult() { return string.ToString(%1); }", watch);
+string logText;
+int logLine;
+ScriptModule mod = ScriptModule.CompileScript(GetGame().GetScriptModule(), code, logText, logLine);
+
+if (mod)
+{
+	string output;
+	mod.Call(null, "WatchResult", false, output);
+	Print(output);
+}
+else
+{
+	Print(logText);
+	Print(logLine);
+}
+\endcode
+*/
+class ScriptModule
+{
+	private void ScriptModule();
+
+	/*!
+	Dynamic call of function.
+	when `inst == NULL`, it's global function call, otherwise it's method of class.
+	If `async` is `true`, creates new thread (so it's legal to use sleep/wait).
+	Otherwise main thread is used and call is blocking.
+	Return value of called method is returned via `returnVal` (only when `async` is false!)
+	Returns `true`, when success.
+	*/
+	proto bool Call(Class inst, string function, bool async, out void returnVal, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
+	/*!
+	Load script and create ScriptModule for it.
+	Available in developer builds (workbench or diag) and in headless server.
+	\param parentModule Module
+	\param scriptFile Script file path
+	\returns Loaded scripted module
+	*/
+	static proto ref ScriptModule LoadScript(ScriptModule parentModule, string scriptFile);
+	/*!
+	Create ScriptModule from string input.
+	Available in developer builds (workbench or diag) and in headless server.
+	\param parentModule Module
+	\param text to compile
+	\param errorText output from compiler
+	\param errorLine output from compiler
+	\returns Loaded scripted module
+	*/
+	static proto ref ScriptModule CompileScript(ScriptModule pParentModule, string text, out string errorText, out int errorLine);
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup System
+\{
+*/
+
+sealed class System
+{
+	private void System();
+	private void ~System();
+
+	//! Switches memory validation (huge slowdown! Use with care only for certain section of code!)
+	static proto void MemoryValidation(bool enable);
+	//! Number of allocations of physical memory.
+	static proto int MemoryAllocationCount();
+	//! Total allocation of physical memory in kilobytes.
+	static proto int MemoryAllocationKB();
+	/*!
+	Returns command line argument.
+	\param param Name of a command line argument
+	\param[out] val Value of the param or empty string if the param was not found
+	\return True if param is present, False if it was not found
+	\code
+		string param;
+		System.GetCLIParam("world", param); // return a value when program executed with param -world something
+	\endcode
+	*/
+	static proto bool GetCLIParam(string param, out string val);
+	/*!
+	Returns whether command line parameter is present.
+	\param paramName Name of the command line parameter.
+	\return True if param is present, False otherwise.
+	\code
+		if (System.IsCLIParam("verbose")) // Prints "something" when program executed with param -verbose
+		{
+			Print("something");
+		}
+	\endcode
+	*/
+	static proto bool IsCLIParam(string paramName);
+	//! Copy text from clipboard (works only on PC)
+	static proto string ImportFromClipboard();
+	//! Set text to clipboard (works only on PC)
+	static proto void ExportToClipboard(string text);
+	static proto string GetProfileName();
+	static proto string GetMachineName();
+	//! Obtain value of SystemTime as number of seconds since midnight 1970-1-1 UTC.
+	static proto int GetUnixTime();
+	/*!
+	Returns current system time (real world time) in local timezone.
+	\code
+		int hour = 0;
+		int minute = 0;
+		int second = 0;
+
+		System.GetHourMinuteSecond(hour, minute, second);
+
+		Print(hour);
+		Print(minute);
+		Print(second);
+
+		>> hour = 16
+		>> minute = 38
+		>> second = 7
+	\endcode
+	*/
+	static proto void GetHourMinuteSecond(out int hour, out int minute, out int second);
+	/*!
+	Returns current system time (real world time) in UTC.
+	\code
+		int hour = 0;
+		int minute = 0;
+		int second = 0;
+
+		System.GetHourMinuteSecondUTC(hour, minute, second);
+
+		Print(hour);
+		Print(minute);
+		Print(second);
+
+		>> hour = 15
+		>> minute = 38
+		>> second = 7
+	\endcode
+	*/
+	static proto void GetHourMinuteSecondUTC(out int hour, out int minute, out int second);
+	/*!
+	Returns current system date (real world date) in local timezone.
+	\code
+		int year = 0;
+		int month = 0;
+		int day = 0;
+
+		System.GetYearMonthDay(year, month, day);
+
+		Print(year);
+		Print(month);
+		Print(day);
+
+		>> year = 2015
+		>> month = 3
+		>> day = 24
+	\endcode
+	*/
+	static proto void GetYearMonthDay(out int year, out int month, out int day);
+	/*!
+	Returns current system date (real world date) in UTC.
+	\code
+		int year = 0;
+		int month = 0;
+		int day = 0;
+
+		System.GetYearMonthDayUTC(year, month, day);
+
+		Print(year);
+		Print(month);
+		Print(day);
+
+		>> year = 2015
+		>> month = 3
+		>> day = 24
+	\endcode
+	*/
+	static proto void GetYearMonthDayUTC(out int year, out int month, out int day);
+	static proto ProfileData GetProfileData();
+	/*!
+	\brief Returns number of milliseconds that have elapsed since the game was started.
+	*/
+	static proto int GetTickCount(int prev = 0);
+	static proto string GetAdapterName();
+	static proto void GetNativeResolution(out int width, out int height);
+	static proto void GetRenderingResolution(out int width, out int height);
+	static proto void GetSupportedResolutions(out notnull array<int> widths, out notnull array<int> heights);
+	/*!
+	Takes screenshot and stores it in a BMP format at specified path.
+	\param path Path where screenshot should be written. If you use absolute path or $NamedFileSystem:
+							path, it will be used directly without any changes. If you use relative path, it will be
+							relative to $profile: file system. Finally, if path is empty string, screenshot will be
+							saved to "$profile:ScreenShots/DATETIME.bmp" where DATETIME will be replaced by current
+							date and time.
+	\return			true if file can be written
+	*/
+	static proto bool MakeScreenshot(string path);
+	/*!
+	Take screenshot on specified position and size. dstWidth x dstHeight point to final image size,
+	if they are zero then they equal to srcWidth x srcHeight. The callback receives raw image data
+	which are valid in the time of callback call only
+	\param scriptCallback	callback to script function which receives the data
+	\param posX						X position of screenshot
+	\param posY						Y position of screenshot
+	\param srcWidth				width of image to be taken
+	\param srcHeight			height of image to be taken
+	\param dstWidth				width of destination image, 0 means the srcWidth is used
+	\param dstHeight			height of destination image, 0 means the srcHeight is used
+	*/
+	static proto void MakeScreenshotRawData(ScreenshotRawDataCallback callback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
+	/*!
+	Take screenshot on specified position and size. dstWidth x dstHeight point to final image size,
+	if they are zero then they equal to srcWidth x srcHeight. The callback receives a full texture
+	which can be used for any purpose
+	\param scriptCallback	callback to script function which receives the data
+	\param posX						X position of screenshot
+	\param posY						Y position of screenshot
+	\param srcWidth				width of image to be taken
+	\param srcHeight			height of image to be taken
+	\param dstWidth				width of destination image, 0 means the srcWidth is used
+	\param dstHeight			height of destination image, 0 means the srcHeight is used
+	*/
+	static proto void MakeScreenshotTexture(ScreenshotTextureCallback callback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
+	/*!
+	Returns actual fps (average in last 10 frames)
+	*/
+	static proto float GetFPS();
+	/*!
+	Returns average time a frame took in seconds (average over last 10 frames)
+	*/
+	static proto float GetFrameTimeS();
+	/*!
+	Use FileIO.FindFiles instead
+	*/
+	[Obsolete("Use FileIO.FindFiles instead")]
+	static proto bool FindFiles(FindFilesCallback callback, string path, string ext);
+	/*!
+	Return current platform
+	*/
+	static proto EPlatform GetPlatform();
+	/*!
+	Checks if the app runs in console mode (no rendering, audio or input)
+	@return True if the app runs in console mode. False otherwise.
+	*/
+	static proto bool IsConsoleApp();
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Types
+\{
+*/
+
+sealed class float
+{
+	private void float();
+	private void ~float();
+
+	const float MAX = FLT_MAX;
+	const float INFINITY = FLT_INF;
+
+	/*!
+	Float to string with fixed length, padded with zeroes.
+	\param len \p int fixed length (overall including decimal part and floating point mark)
+	\param lenDec \p int fixed length of decimal part
+	\code
+		float num = 123.456;
+		string s1 = num.ToString(10, 4);
+		string s2 = num.ToString();
+		Print(s1);
+		Print(s2);
+		>> s1 = '00123.4560'
+		>> s2 = '123.456'
+	\endcode
+	*/
+	proto external string ToString(int len = -1, int lenDec = -1);
+	/*!
+	Return true when difference of two given float values is less or equal then epsilon.
+	\code
+		float a = 1.0;
+		float b = 1.001;
+
+		if (float.AlmostEqual(a,b))
+			Print("are almost equal");
+
+		>> 'are almost equal'
+	\endcode
+	*/
+	static proto bool AlmostEqual(float a, float b, float epsilon = 0.0001);
+	/*!
+	Returns an integer that indicates the sign of a number.
+	- For `floatNumber.Sign() < 0` result is -1.
+	- For `floatNumber.Sign() == 0` result is 0.
+	- For `floatNumber.Sign() > 0` result is 1.
+	*/
+	proto external int Sign();
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Types
+\{
+*/
+
+sealed class int
+{
+	private void int();
+	private void ~int();
+
+	const int MAX = 2147483647;
+	const int MIN = -2147483648;
+
+	/*!
+	Converts ASCII code to string.
+	\return `string` - Converted `int`.
+	\code
+		int ascii_code = 77;
+		string str = ascii_code.AsciiToString();
+		Print(str);
+
+		>> str = 'M'
+	\endcode
+	*/
+	proto external string AsciiToString();
+	/*!
+	Integer to string with fixed length, padded with zeroes.
+	\param len \p int fixed length
+	\code
+		int num = 123;
+		string s1 = num.ToString(5);
+		string s2 = num.ToString();
+		Print(s1);
+		Print(s2);
+		>> s1 = '00123'
+		>> s2 = '123'
+	\endcode
+	*/
+	proto external string ToString(int len = -1);
+	/*!
+	Returns an integer that indicates the sign of a number.
+	- For `intNumber.Sign() < 0` result is -1.
+	- For `intNumber.Sign() == 0` result is 0.
+	- For `intNumber.Sign() > 0` result  is 1.
+	*/
+	proto external int Sign();
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Types
+\{
+*/
+
+sealed class StaticArray
+{
+	private void StaticArray();
+	private void ~StaticArray();
+
+	/*!
+	Sorts static array of integers(ascending) / floats(ascending) / strings(alphabetically) / pointers(by address ascending)
+	\param paramArray Array to sort
+	\code
+		string	arrStr[3] = {"Dog", "Car", "Apple"};
+		StaticArray.Sort(arrStr);
+		Print(arrStr);
+		>>  {'Apple','Car','Dog'}
+	\endcode
+	*/
+	static proto void Sort(void paramArray[]);
+	/*!
+	\brief Revers order of static array elements
+		@code
+			int arr1[] = {1,2,3};
+			Print(arr1);
+			StaticArray.Reverse(arr1);
+			Print(arr1);
+			>>  {1,2,3}
+			>>	{3,2,1}
+		@endcode
+	*/
+	static proto void Reverse(void paramArray[]);
+	/*!
+	\brief Copy elements from one static array into another (of same type)
+	\param destArray destination array
+	\param srcArray source array
+	\param dstOffset element offset in destination array
+	\param srcOffset element offset in source array
+	\param num number of elements to copy (-1 for all of them)
+	\returns \p int number of elements copied
+		@code
+			int arr1[3] = {1,2,3};
+			int arr2[3];
+			int arr3[2];
+			// copy all elements from arr1 to arr2
+			StaticArray.Copy(arr2, arr1);
+
+			// copy last two elements from arr1 at the beginning of arr3
+			StaticArray.Copy(arr3, arr1, 0, 1, 2);
+
+			Print(arr1);
+			Print(arr2);
+			Print(arr3);
+			>>  {1,2,3}
+			>>	{1,2,3}
+			>>	{2,3}
+		@endcode
+	*/
+	static proto int Copy(void destArray[], void srcArray[], int dstOffset = 0, int srcOffset = 0, int num = -1);
+	//! Return length of static array
+	static proto int Length(void paramArray[]);
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Types
+\{
+*/
+
+sealed class string
+{
+	private void string();
+	private void ~string();
+
+	static const string Empty;
+
+	/*!
+	Gets the ASCII code of a character in the string.
+	\param index Index of the character, 0 by default.
+	*/
+	proto external int ToAscii(int index = 0);
+	/*!
+	Parses a float from a string.
+	Any whitespaces at the beginning in front of a number in the string will be skipped.
+
+	\param default  Will be returned when the parsing fails (e.g. there's no number to parse)
+	\param offset   Number of characters in the string to skip
+	\param parsed   Out param - number of characters read
+
+	\return The parsed float (the default if the parsing failed).
+
+	\code
+		"42.7".ToFloat()    // returns 42.7
+		" 42abc".ToFloat()  // returns 42.0
+		"abc42.7".ToFloat() // returns 42.7
+		"abc42.7".ToFloat(default: 17.6)  // returns 17.6
+		"abc42.7".ToFloat(offset: 3)		  // returns 42.7
+		"42.7".ToFloat(parsed: len)       // returns 42.7, len = 4
+		" 42.7".ToFloat(parsed: len)      // returns 42.7, len = 5
+		"0".ToFloat(parsed: len)          // returns  0.0, len = 1
+		"abc".ToFloat(parsed: len)        // returns  0.0, len = 0
+		"   ".ToFloat(default: 17.6, parsed: len)      // returns 17.6, len = 0
+		"abc 42.7 abc".ToFloat(offset: 3, parsed: len) // returns 42.7, len = 5
+	\endcode
+	*/
+	proto external float ToFloat(float default = 0.0, int offset = 0, out int parsed = -1);
+	/*!
+	Parses an integer from a string.
+	Any whitespaces at the beginning in front of a number in the string will be skipped.
+
+	\param default  Will be returned when the parsing fails (e.g. there's no number to parse)
+	\param offset   Number of characters in the string to skip
+	\param parsed   Out param - number of characters read
+
+	\return The parsed integer (the default if the parsing failed).
+
+	\code
+		"42".ToInt()      // returns 42
+		" 42abc".ToInt()  // returns 42
+		"abc42".ToInt()   // returns 0
+		"abc42".ToInt(default: 17)  // returns 17
+		"abc42".ToInt(offset: 3)    // returns 42
+		"42".ToInt(parsed: len)     // returns 42, len = 2
+		" 42".ToInt(parsed: len)    // returns 42, len = 3
+		" 42.7".ToInt(parsed: len)  // returns 42, len = 3
+		"0".ToInt(parsed: len)      // returns 0,  len = 1
+		"abc".ToInt(parsed: len)    // returns 0,  len = 0
+		"   ".ToInt(default: 17, parsed: len)      // returns 17, len = 0
+		"abc 42 abc".ToInt(offset: 3, parsed: len) // returns 42, len = 3
+	\endcode
+	*/
+	proto external int ToInt(int default = 0, int offset = 0, out int parsed = -1);
+	/*!
+	Returns a vector from a string.
+	\return \p vector Converted s as vector
+	\code
+		string str = "1 0 1";
+		vector v = str.ToVector();
+		Print(v);
+
+		>> v = <1,0,1>
+	\endcode
+	*/
+	proto external vector ToVector();
+	/*!
+	Substring of `str` from `start` position `len` number of characters. (Maximum output string size is limited to 8191 characters)
+	\param start Position in \p str
+	\param len Count of characters
+	\return \p string - Substring of \p str
+	\code
+		string str = "Hello World";
+		string strSub = str.Substring(2, 5);
+		Print(strSub);
+
+		>> strSub = llo W
+	\endcode
+	*/
+	proto external string Substring(int start, int len);
+	/*!
+	Returns trimmed string with removed leading and trailing whitespaces. (Maximum output string size is limited to 8191 characters)
+	\return \p string - Trimmed string
+	\code
+		string str = " Hello World "
+		Print( str );
+		Print( str.Trim() );
+
+		>> ' Hello World '
+		>> 'Hello World'
+	\endcode
+	*/
+	proto external string Trim();
+	/*!
+	Builds a string using given format and arguments. (Maximum output string size is limited to 8191 characters)
+	\param fmt    Formatting string - any string with special tokens %1 .. %9.
+	\param param1 Replaces the "%1" token in the formatting string in the result
+	\param param2 Replaces the "%2" token
+
+	\return The resulting string, i.e. the formatting string with all the %1 ... %9 replaced.
+
+	\code
+		int a = 5;
+		float b = 5.99;
+		string c = "beta";
+		string 	test = string.Format("Ahoj %1 = %3 , %2", a, b, c);
+		Print(test);
+		>> 'Ahoj 5 = 'beta' , 5.99'
+	\endcode
+	*/
+	static proto string Format(string fmt, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
+	/*!
+	Removes leading and trailing whitespaces in string. Returns length
+	\return \p int - Count of chars
+	\code
+		string str = " Hello World ";
+		int i = str.TrimInPlace();
+		Print(str);
+		Print(i);
+
+		>> str = 'Hello World'
+		>> i = 11
+	\endcode
+	*/
+	proto external int TrimInPlace();
+	/*!
+	Returns length of string.
+	\return \p int - Length of string
+	\code
+		string str = "Hello World";
+		int i = str.Length();
+		Print(i);
+
+		>> i = 11
+	\endcode
+	*/
+	proto external int Length();
+	/*!
+	Determines if string is empty.
+	\return     True if empty, False otherwise.
+	*/
+	proto external bool IsEmpty();
+	/*!
+	Returns hash of string.
+	\return \p int - Hash of string
+	\code
+		string str = "Hello World";
+		int hash = str.Hash();
+		Print(hash);
+	\endcode
+	*/
+	proto external int Hash();
+	/*!
+	\brief Finds 'sample' in 'str'. Returns -1 when not found
+		\param sample \p string Finding string
+		\return \p int - Returns position where \p sample starts, or -1 when \p sample not found
+		@code
+			string str = "Hello World";
+			Print( str.IndexOf( "H" ) );
+			Print( str.IndexOf( "W" ) );
+			Print( str.IndexOf( "Q" ) );
+
+			>> 0
+			>> 6
+			>> -1
+		@endcode
+	*/
+	proto external int IndexOf(string sample);
+	/*!
+	\brief Finds last 'sample' in 'str'. Returns -1 when not found
+		\param sample \p string Finding string
+		\return \p int - Returns position where \p sample starts, or -1 when \p sample not found
+		@code
+			string str = "Hello World";
+			Print( str.IndexOf( "l" ) );
+
+			>> 9
+		@endcode
+	*/
+	proto external int LastIndexOf(string sample);
+	/*!
+	\brief Finds 'sample' in 'str' from 'start' position. Returns -1 when not found
+		\param start \p int Start from position
+		\param sample \p string Finding string expression
+		\return \p int - Length of string \p s
+		@code
+			string str = "Hello World";
+			Print( str.IndexOfFrom( 3, "H" ) );
+			Print( str.IndexOfFrom( 3, "W" ) );
+			Print( str.IndexOfFrom( 3, "Q" ) );
+
+			>> -1
+			>> 6
+			>> -1
+		@endcode
+	*/
+	proto external int IndexOfFrom(int start, string sample);
+	/*!
+	\brief Retunrs true if sample is substring of string
+		\param sample \p string Finding string expression
+		\return \p bool true if sample is substring of string
+		@code
+			string str = "Hello World";
+			Print( str.Contains("Hello") );
+			Print( str.Contains("Mexico") );
+
+			>> true
+			>> false
+		@endcode
+	*/
+	proto external bool Contains(string sample);
+	/*!
+	Checks whether the string contains a given substring at a given position.
+
+	\param sample The substring to test
+	\param pos    Position to test for the substring (index of the string's character)
+	\return true if the string contains the given sample at the given position, false otherwise.
+
+	\code
+		"Hello World".ContainsAt("Hello", 0); // true (maybe use string.StartsWith() instead?)
+		"Hello World".ContainsAt("World", 6); // true
+		"Hello World".ContainsAt("Hello", 6); // false
+	\endcode
+	*/
+	proto external bool ContainsAt(string sample, int pos);
+	/*!
+	Checks whether the string begins with a given substring.
+
+	\param sample The substring to test
+	\return true if the string starts with the given sample, false otherwise.
+
+	\code
+		"Hello World".StartsWith("Hello");    // true
+		"Hello World".StartsWith("World");    // false
+	\endcode
+	*/
+	proto external bool StartsWith(string sample);
+	/*!
+	\brief Retunrs true if string ends with sample, otherwise return false
+		\param sample \p string Finding string expression
+		\return \p bool true if string ends with sample
+		@code
+			string str = "Hello World";
+			Print( str.StartsWith("Hello") );
+			Print( str.StartsWith("World") );
+
+			>> false
+			>> true
+		@endcode
+	*/
+	proto external bool EndsWith(string sample);
+	/*!
+	\brief Compares with sample and returns an integer less than, equal to, or greater than zero if string is less than, equal to, or greater than sample.
+		\param sample \p string to campare with
+		\return \p bool less than, equal to, or greater than zero if string is less than, equal to, or greater than sample
+		@code
+			string str = "Hello";
+			Print( str.Compare("Hello") );
+			Print( str.Compare("heLLo") );
+			Print( str.Compare("heLLo", false) );
+
+			>> 0
+			>> -1
+			>> 0
+		@endcode
+	*/
+	proto external int Compare(string sample, bool caseSensitive = true);
+	/*!
+	\brief Replace all occurrances of 'sample' in 'str' by 'replace'
+		\param sample string to search in \p str
+		\param replace string which replace \p sample in \p str
+		\return \p int - number of occurrances of 'sample' in 'str'
+		@code
+		string test = "If the length of the C string in source is less than num, only the content up to the terminating null-character is copied.";
+		Print(test);
+		int count = test.Replace("the", "*");
+		Print(count);
+		Print(test);
+
+		>> string test = 'If the length of the C string in source is less than num, only the content up to the terminating null-character is copied.';
+		>> int count =   4
+		>> string test = 'If * length of * C string in source is less than num, only * content up to * terminating null-character is copied.'
+		@endcode
+	*/
+	proto external int Replace(string sample, string replace);
+	/*!
+	\brief Changes string to lowercase. Returns length. Works with just ASCII characters
+		\return \p int - Length of changed string
+		@code
+			string str = "Hello World";
+			int i = str.ToLower();
+			Print(str);
+			Print(i);
+
+			>> str = hello world
+			>> i = 11
+		@endcode
+	*/
+	proto external int ToLower();
+	/*!
+	\brief Changes string to uppercase. Returns length. Works with just ASCII characters
+		\return \p int - Length of changed string
+		@code
+			string str = "Hello World";
+			int i = str.ToUpper();
+			Print(str);
+			Print(i);
+
+			>> str = HELLO WORLD
+			>> i = 11
+		@endcode
+	*/
+	proto external int ToUpper();
+	/*!
+	Splits string into array of strings separated by `delimiter`.
+	\param delimiter Strings separator
+	\param[out] outTokens Array with strings
+	\param removeEmptyEntries If true removes empty strings from outTokens array
+	\code
+		array<string> strs = {};
+		string line = "The;quick;brown;fox;jumps;over;the;;dog;";
+		line.Split(";", strs, true);
+
+		for ( int i = 0; i < strs.Count(); i++ )
+		{
+			Print(strs.Get(i));
+		}
+
+		>> 'The'
+		>> 'quick'
+		>> 'brown'
+		>> 'fox'
+		>> 'jumps'
+		>> 'over'
+		>> 'the'
+		>> 'dog'
+	\endcode
+	*/
+	proto external void Split(string delimiter, notnull out array<string> outTokens, bool removeEmptyEntries);
+	static proto string ToString(void var, bool type = false, bool name = false, bool quotes = true);
+	/*!
+	\brief Gets n-th character from string
+		\param index character index
+		\return \p string character on index-th position in string
+		@code
+			string str = "Hello World";
+			Print( str[4] ); // Print( str.Get(4) );
+
+			>> 'o'
+		@endcode
+	*/
+	proto external string Get(int index);
+	/*!
+	Checks whether a character at a given position is a digit.
+
+	\param index position of the character in the string
+	\return true iff the character at the position is from the "0" .. "9" range
+	*/
+	proto external bool IsDigitAt(int index);
+	/*!
+	Checks whether a character at a given position is a whitespace.
+	A whitespace may be e.g. Space (0x20 " "), Tab (0x09 "\t"), New Line (0x09 "\r", 0x0a "\n") etc.
+
+	\param index position of the character in the string
+	\return true iff the character at the position is a whitespace
+	*/
+	proto external bool IsSpaceAt(int index);
+	/*!
+	\brief Returns internal type representation. Can be used in runtime, or cached in variables and used for faster inheritance checking
+		\returns \p typename Type of class
+		@code
+			???
+		@endcode
+	*/
+	proto external typename ToType();
+}
+
+/*!
+\}
+

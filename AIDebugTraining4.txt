@@ -1,0 +1,1293 @@
+
+// -------------------------------------------------------------------------
+// object to be used from script for result binding
+//
+//	[Example:]
+//
+//		RestCallback cbx1 = new RestCallback;
+//		RestContext ctx = g_Game.GetRestApi().GetContext("http://somethingsomewhere.com/path/");
+//		ctx.GET(cbx1,"RequestPath?Argument=Something");
+//
+//		Event are then called upon RestCallback()
+//
+class RestCallback : Managed
+{
+	/**
+	\brief Called in case request failed (ERestResult) - Note! May be called multiple times in case of (RetryCount > 1)
+	*/
+	void OnError( int errorCode )
+	{
+		// override this with your implementation
+		//Print(" !!! OnError() ");
+	};
+
+	/**
+	\brief Called in case request timed out or handled improperly (no error, no success, no data)
+	*/
+	void OnTimeout()
+	{
+		// override this with your implementation
+		//Print(" !!! OnTimeout() ");
+	};
+
+	/**
+	\brief Called when data arrived and/ or response processed successfully
+	*/
+	void OnSuccess( string data, int dataSize )
+	{
+		// override this with your implementation
+		//Print(" !!! OnSuccess() size=" + dataSize );
+		//if( dataSize > 0 )
+		//	Print(data); // !!! NOTE: Print() will not output string longer than 1024b, check your dataSize !!!
+	};
+
+	/**
+	\brief Called when data arrived and/ or file created successfully
+	*/
+	void OnFileCreated( string fileName, int dataSize )
+	{
+		// override this with your implementation
+		//Print(" !!! OnFileCreated() file=" + fileName + " size=" + dataSize );
+	};
+
+}
+/*!
+\defgroup ScriptTestingFramework Script Testing Framework
+\addtogroup ScriptTestingFramework
+@{
+
+\page Page_System_ScriptTestingFramework Script Testing Framework
+\tableofcontents
+
+\section Introduction Introduction
+
+- Provides a unified and simple interface that emphasizes the smallest amount
+of boiler plate code possible.
+
+- The collection and instantiation of its primitives is performed right after
+the script compilation.
+
+- Within the framework a SINGLE test harness derived class can exist. The
+harness runs the tests and contains API to access them.
+
+- The test units are compiled to Suites. These provide additional API for
+environmental control.
+
+\section SimpleTests Simple tests
+
+Can be perfomed in form of annotated <b>free functions</b>.
+
+<em>Note: Notice the Suite name in the attribute.</em>
+
+@code
+[Test("MyFirstTestSuite")]
+TestResultBase MyFooBarTest() { return TestBoolResult(5 > 3); }
+@endcode
+
+\section StatefulTests Stateful tests
+More elaborate tests that need some state and will run for several ticks have
+to be defined as TestBase derived classes. Your logic has to be ran through
+__step methods__.
+
+\subsection StepMethods Step methods
+- You can name your step methods however you like.
+- They have to be annotated by the [Step(Stage)] attribute which pairs the step
+with a stage.
+
+\subsection Stages Stages
+- They divide the steps into groups that express the initialization and
+finalization process.
+- Stages are executed in order Setup -> Main -> TearDown.
+- Methods in stages are executed in order of definition.
+
+\subsection ReturnValues Return values
+- void -> Will get executed only once.
+- bool -> Will get executed every tick until true is returned.
+
+\subsection Result Result
+- Result is set via API member method of TestBase `SetResult(TestResultBase)`.
+- Setting a result which evaluates to failure will terminate the stage.
+
+\subsection FailureUnwind Failure unwind
+- If the Setup stage fails the test only terminates and TearDown is not called.
+- Main stage failure will trigger the TearDown.
+- TearDown failure will do nothing.
+
+\subsection Timeout Timeout
+- The tests won't timeout by default. The value may be specified via Test
+attribute.
+- The timeout counter resets for every stage method.
+- If the stage method times out the TimeoutResult is set (it evaluates to
+failure and the failure unwind process starts).
+
+@code
+[Test("MyFirstTestSuite", timeoutS: 2, timeoutMs: 250)]
+class MyAsyncTest : TestBase
+{
+	// Simple blocking initialization.
+	[Step(EStage.Setup)]
+	void Initialize() { ... }
+
+	// Async test which is waiting for result for several frames.
+	[Step(EStage.Main)]
+	bool Pool() { ... }
+
+	// Finalization process waiting for result for several frames.
+	[Step(EStage.TearDown)]
+	bool FinalizeA() { ... }
+
+	// Simple blocking finalization call.
+	[Step(EStage.TearDown)]
+	void FinalizeB() { ... }
+}
+@endcode
+
+*/
+
+//-----------------------------------------------------------------------------
+//! Attribute used for tests annotation and assignment to Suites.
+class Test
+{
+	string Suite;
+
+	int TimeoutS;
+	int TimeoutMs;
+
+	//! Defines a suite the test belongs to and its timeout value.
+	void Test(string suite, int timeoutS = 0, int timeoutMs = 0)
+	{
+		Suite = suite;
+		TimeoutS = timeoutS;
+		TimeoutMs = timeoutMs;
+	}
+}
+
+//-----------------------------------------------------------------------------
+//! Stage definition used in conjunction with Step attribute.
+enum EStage
+{
+	Setup,
+	Main,
+	TearDown
+}
+
+//-----------------------------------------------------------------------------
+//! Attribute which marks a method as part of the testing process.
+class Step
+{
+	EStage Stage;
+
+	void Step(EStage stage = EStage.Main)
+	{
+		Stage = stage;
+	}
+}
+
+//-----------------------------------------------------------------------------
+//! Collection and main interface of the Testing framework.
+class TestHarness : Managed
+{
+	//! Starts the testing process. Returns true when all tests have finished. If
+	//! some of them are still in progress false is reported.
+	proto native static bool Run();
+	//! Generates a xml report.
+	proto static string Report();
+	//! Returns number of test suites.
+	proto native static int GetNSuites();
+	//! Returns a test suite.
+	proto native static TestSuite GetSuite(int handle);
+	//! Returns currently active TestSuite or null when none is active.
+	proto native static TestSuite ActiveSuite();
+	//! Returns true when all tests and suites finished.
+	proto native static bool Finished();
+	//! Starts up the testing process and initializes the structures.
+	proto native static void Begin();
+	//! Finalizes the testing process.
+	proto native static void End();
+}
+
+//-----------------------------------------------------------------------------
+//! Collection of tests.
+class TestSuite : Managed
+{
+	//! Sets the suite result. Failure can result in specialized behavior described
+	//! in TestResultBase.
+	proto native void SetResult(TestResultBase res);
+	//! Returns the number for tests within this suite.
+	proto native int GetNTests();
+	//! Returns a test.
+	proto native TestBase GetTest(int handle);
+	//! Enables/Disables the suites. Disabled suites won't run at all.
+	proto native void SetEnabled(bool val);
+	//! Enabled flag getter.
+	proto native bool IsEnabled();
+	//! Suite class name getter. Strictly for UI porposes!
+	proto string GetName();
+}
+
+//-----------------------------------------------------------------------------
+//! Test base class. 
+class TestBase : Managed
+{
+	//! Sets the test result. Failure can result in specialized behavior described
+	//! in TestResultBase.
+	proto native void SetResult(TestResultBase res);
+	//! Result getter.
+	proto native TestResultBase GetResult();
+	//! Enables/Disables the test. Disabled tests won't run at all.
+	proto native void SetEnabled(bool val);
+	//! Enabled flag getter.
+	proto native bool IsEnabled();
+	//! Test name getter. Strictly for UI porposes!
+	proto string GetName();
+}
+
+//-----------------------------------------------------------------------------
+//! Base class for test results. This way you report back to the system.
+//! More complex failure types with descriptions can be reported by
+//! implementation of FailureText in format of junit
+//! [https://llg.cubic.org/docs/junit/].
+class TestResultBase : Managed
+{
+	//! Return true of the result means failure.
+	bool Failure() { return NativeFailure(); } 
+	//! Text used for xml report output.
+	string FailureText() { return NativeFailureText(); }
+
+	// Script forwarding to cpp. Otherwise the script overloading wouldn't be able
+	// to call the native base implementation.
+	// ----------------- vvv ----------------- 
+	proto native bool NativeFailure();
+	proto native string NativeFailureText();
+	// ----------------- ^^^ ----------------- 
+}
+
+/*!
+ * @}
+ */
+
+//-----------------------------------------------------------------------------
+// EXAMPLES
+//-----------------------------------------------------------------------------
+/*
+//-----------------------------------------------------------------------------
+//! Basic test result.
+class TestBoolResult : TestResultBase
+{
+	bool Value;
+
+	void TestBoolResult(bool val) { Value = val; }
+
+	override bool Failure() { return !Value; }
+
+	override string FailureText()
+	{
+		// junit kind of error report. (simple)
+		return "<failure type=\"BoolResult\">Failed</failure>";
+	}
+}
+
+//-----------------------------------------------------------------------------
+class MyHarness : TestHarness
+{
+}
+
+//-----------------------------------------------------------------------------
+class MyTestSuite : TestSuite
+{
+	int cnt;
+
+	[Step(EStage.Setup)]
+	void Prep()
+	{
+		Print("MyTestSuite::Prep");
+		cnt = 3;
+	}
+
+	[Step(EStage.Setup)]
+	bool Count()
+	{
+		--cnt;
+		Print("MyTestSuite::Count: cnt=" + cnt);
+		return cnt == 0;
+	}
+
+	[Step(EStage.TearDown)]
+	bool CountUp()
+	{
+		++cnt;
+		Print("MyTestSuite::CountUp: cnt=" + cnt);
+		return cnt == 10;
+	}
+}
+
+//-----------------------------------------------------------------------------
+[Test("MyTestSuite")]
+TestResultBase MyTest()
+{
+	Print("MyFuncTest");
+	return new TestBoolResult(true);
+}
+
+//-----------------------------------------------------------------------------
+[Test("MyTestSuite")]
+class MyAsyncTest : TestBase
+{
+	int counter;
+
+	[Step(EStage.Main)]
+	void Set()
+	{
+		counter = 10;
+	}
+
+	[Step(EStage.Main)]
+	bool Pool() 
+	{
+		Print("AsyncTest::Pool::counter=" + counter);
+
+		if(counter == 0)
+		{
+			Print("AsyncTest::Pool::Result");
+			SetResult(new TestBoolResult(false));
+			return true;
+		}
+
+		Print("AsyncTest::Pool::Progress");
+
+		counter--;
+		return false;
+	}
+}
+*/
+//------------------------------------------------------------------------------------------------
+class AnimateWidget
+{
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Solving this with an array resulted in a crapton of calls. In Mod Manager menu, it was reported we reached 26 million .Get() calls!
+	
+	protected ref array<ref WidgetAnimationBase> m_aAnimations = {};
+		
+//---- REFACTOR NOTE END ----
+	
+	protected static AnimateWidget s_Instance;
+
+	ref ScriptInvoker m_OnAnimatingStarted = new ScriptInvoker();
+	ref ScriptInvoker m_OnAnimatingCompleted = new ScriptInvoker();
+
+	//------------------------------------------------------------------------------------------------
+	static sealed AnimateWidget GetInstance() 
+	{
+		return s_Instance;
+	}
+
+	/*!
+	Stop either all animations on the widget, or an animation of a specific type
+	*/
+	//------------------------------------------------------------------------------------------------
+	static bool StopAnimation(Widget w, typename typeName)
+	{
+		if (!s_Instance || !w)
+			return false;
+		
+		bool success = false;
+		WidgetAnimationBase current;
+		for (int i = s_Instance.m_aAnimations.Count() - 1; i >= 0; i--)
+		{
+			current = s_Instance.m_aAnimations.Get(i);
+			if (current.GetWidget() != w)
+				continue;
+
+			if (!current.IsInherited(typeName))
+				continue;
+			
+			s_Instance.m_aAnimations.Remove(i);
+			success = true;
+		}
+		
+		return success;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Stop animation
+	\param anim Animation class
+	\return True if the animation was removed
+	*/
+	static bool StopAnimation(WidgetAnimationBase anim)
+	{
+		if (!s_Instance)
+			return false;
+		
+		int index = s_Instance.m_aAnimations.Find(anim);
+		if (index == -1)
+			return false;
+		
+		s_Instance.m_aAnimations.Remove(index);
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Stop all animation on given widget.
+	\param w Target widget
+	*/
+	static void StopAllAnimations(Widget w)
+	{
+		if (!s_Instance)
+			return;
+		
+		for (int i = s_Instance.m_aAnimations.Count() - 1; i >= 0; i--)
+		{
+			if (s_Instance.m_aAnimations[i].GetWidget() == w)
+				s_Instance.m_aAnimations.Remove(i);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static bool IsAnimating(Widget w)
+	{
+		if (!w || !s_Instance)
+			return false;
+		
+		foreach (WidgetAnimationBase animation: s_Instance.m_aAnimations)
+		{
+			if (animation.GetWidget() == w)
+				return true;
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool IsAnimatingType(Widget w, typename type)
+	{
+		if (!w || !s_Instance)
+			return false;
+		
+		foreach (WidgetAnimationBase animation: s_Instance.m_aAnimations)
+		{
+			if (animation.GetWidget() == w && animation.Type() == type)
+				return true;
+		}
+		
+		return false;
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationBase GetAnimation(Widget w, typename type)
+	{
+		if (!w || !s_Instance)
+			return null;
+		
+		foreach (WidgetAnimationBase animation: s_Instance.m_aAnimations)
+		{
+			if (animation.GetWidget() == w && animation.Type() == type)
+				return animation;
+		}
+		
+		return null;
+	}	
+	
+	/// Is 
+	//------------------------------------------------------------------------------------------------
+	static bool IsActive()
+	{
+		if (!s_Instance)
+			return false;
+
+		return !s_Instance.m_aAnimations.IsEmpty();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool AddAnimation(notnull WidgetAnimationBase animation)
+	{
+		if (!s_Instance || !animation || !animation.GetWidget() || animation.GetSpeed() <= 0)
+			return false;
+
+		StopAnimation(animation.GetWidget(), animation.Type());
+		if (!IsActive())
+			s_Instance.m_OnAnimatingStarted.Invoke();
+		
+		s_Instance.m_aAnimations.Insert(animation);
+		
+		return true;
+	}
+
+	// Visibility/colorization animations
+	static WidgetAnimationBlurIntensity BlurIntensity(Widget widget, float targetValue, float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationBlurIntensity))
+			return null;
+		
+		WidgetAnimationBlurIntensity anim = new WidgetAnimationBlurIntensity(widget, speed, targetValue);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationOpacity Opacity(Widget widget, float targetValue, float speed, bool toggleVisibility = false)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationOpacity))
+			return null;
+
+		WidgetAnimationOpacity anim = new WidgetAnimationOpacity(widget, speed, targetValue, toggleVisibility);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationImageSaturation Saturation(Widget widget, float targetValue, float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationImageSaturation))
+			return null;
+
+		WidgetAnimationImageSaturation anim = new WidgetAnimationImageSaturation(widget, speed, targetValue);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationAlphaMask AlphaMask(Widget widget, float targetValue, float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationAlphaMask))
+			return null;
+
+		WidgetAnimationAlphaMask anim = new WidgetAnimationAlphaMask(widget, speed, targetValue);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationColor Color(Widget widget, Color color, float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationColor))
+			return null;
+
+		WidgetAnimationColor anim = new WidgetAnimationColor(widget, speed, color);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+
+	// Size and position animations
+
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationFrameSize Size(Widget widget, float size[2], float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationFrameSize))
+			return null;
+
+		WidgetAnimationFrameSize anim = new WidgetAnimationFrameSize(widget, speed, size);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationPosition Position(Widget widget, float position[2], float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationPosition))
+			return null;
+
+		WidgetAnimationPosition anim = new WidgetAnimationPosition(widget, speed, position);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationPadding Padding(Widget widget, float padding[4], float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationPadding))
+			return null;
+
+		WidgetAnimationPadding anim = new WidgetAnimationPadding(widget, speed, padding);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationLayoutFill LayoutFill(Widget widget, float targetValue, float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationLayoutFill))
+			return null;
+
+		WidgetAnimationLayoutFill anim = new WidgetAnimationLayoutFill(widget, speed, targetValue);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationImageRotation Rotation(Widget widget, float targetValue, float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationImageRotation))
+			return null;
+
+		WidgetAnimationImageRotation anim = new WidgetAnimationImageRotation(widget, speed, targetValue);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationValue Value(float defaultValue, float targetValue, float speed)
+	{
+		if (!s_Instance || speed <= 0)
+			return null;
+
+		WidgetAnimationValue anim = new WidgetAnimationValue(null, speed, targetValue, defaultValue);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+	
+	//! Make sure that animation can be played, and animator is ready to run it
+	//------------------------------------------------------------------------------------------------
+	protected static bool PrepareAnimation(Widget w, float speed, typename typeName)
+	{
+		if (!g_Game || !(g_Game.InPlayMode() || g_Game.GetWorldEditor()))
+			return false;
+		
+		if (!s_Instance)
+		{
+			Print("[AnimateWidget.PrepareAnimation] AnimateWidget entity instance is missing " + w + "." + w.GetName(), LogLevel.WARNING);
+			return false;
+		}
+		
+		if (!w)
+		{
+			Print("[AnimateWidget.PrepareAnimation] Widget to animate is missing", LogLevel.WARNING);
+			return false;
+		}
+		
+		if (speed <= 0)
+		{
+			Print("[AnimateWidget.PrepareAnimation] Animation speed must be > 0 " + w + "." + w.GetName(), LogLevel.WARNING);
+			return false;
+		}
+
+		// Stop animation of the same type
+		foreach (int i, WidgetAnimationBase anim : s_Instance.m_aAnimations)
+		{
+			if (anim.GetWidget() != w || !anim.IsInherited(typeName))
+				continue;
+
+			anim.Stop();
+			s_Instance.m_aAnimations.Remove(i);
+			break;
+		}
+
+		// If there is no animation running, invoke that new animation is ready to run
+		if (!IsActive())
+			s_Instance.m_OnAnimatingStarted.Invoke();
+
+		return true;
+	}
+
+	// Events
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateAnimations(float timeSlice)
+	{
+		if (m_aAnimations.IsEmpty())
+			m_OnAnimatingCompleted.Invoke();
+
+		// Tick all animations
+		bool finished;
+		for (int i = m_aAnimations.Count() - 1; i >=0; i--)
+		{
+			finished = m_aAnimations[i].OnUpdate(timeSlice);
+			if (finished)
+				m_aAnimations.Remove(i);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void AnimateWidget()
+	{
+		if (!s_Instance)
+			s_Instance = this;
+	}
+};
+
+//! Game singleton instance
+Game g_Game;
+
+/**
+	\brief Enum is filled by C++ by data in project config PhysicsSettings.LayerPresets
+*/
+enum EPhysicsLayerPresets
+{
+	Main,
+	Cover,
+	Character,
+	Projectile,
+	Vehicle,
+	VehicleCast,
+	VehicleFire,
+	BasicVehicleObstacles,
+	VehicleFireView,
+	Building,
+	BuildingNoNavmesh,
+	BuildingView,
+	BuildingViewNoNavmesh,
+	BuildingFire,
+	BuildingFireNoNavmesh,
+	BuildingFireView,
+	BuildingFireViewNoNavmesh,
+	ItemFireView,
+	DoorFireView,
+	Weapon,
+	WeaponFire,
+	Terrain,
+	TreeFireView,
+	CharNoCollide,
+	FireGeo,
+	RockFireView,
+	Debris,
+	Tree,
+	Door,
+	TreePart,
+	Interaction,
+	Ladder,
+	Bush,
+	Foliage,
+	Wheel,
+	PropFireView,
+	PropFireViewNoNavmesh,
+	PropView,
+	PropViewNoNavmesh,
+	Prop,
+	PropNoNavmesh,
+	CharacterAI,
+	Glass,
+	GlassFire,
+	FireView,
+	ViewGeo,
+	VehicleComplex,
+	VehicleSimple,
+	VehicleRotorDisc,
+	CharacterFireGeoRagdoll,
+	InteractionFireGeo,
+	MineTrigger,
+	MineTriggerFire,
+	MineTriggerComplex,
+	Liquids
+}
+
+/**
+	\brief Enum is filled by C++ by data in project config PhysicsSettings.Layers
+*/
+enum EPhysicsLayerDefs
+{
+	Default,
+	Static,
+	VehicleCast,
+	Cover,
+	Character,
+	Projectile,
+	Vehicle,
+	Terrain,
+	Dynamic,
+	Debris,
+	Ragdoll,
+	Vegetation,
+	CharNoCollide,
+	Camera,
+	FireGeometry,
+	ViewGeometry,
+	Ladder,
+	Interaction,
+	Foliage,
+	CharCollide,
+	CharacterAI,
+	Navmesh,
+	Water,
+	NavmeshVehicle,
+	VehicleSimple,
+	VehicleComplex,
+	Unused,
+	Mine,
+	Weapon
+}
+
+enum ETransformMode
+{
+	WORLD, ///< Set world transformation
+	LOCAL, ///< Set local transformation
+	OFFSET ///< Offset actual transformation
+}
+
+/**
+	\brief Additional parameters for entity spawning
+*/
+class EntitySpawnParams
+{
+	ETransformMode TransformMode;
+	vector Transform[4];
+	IEntity Parent;
+	float Scale;
+	
+	void EntitySpawnParams()
+	{
+		TransformMode = ETransformMode.LOCAL;
+		Math3D.MatrixIdentity4(Transform);
+		Scale = 1;
+	}
+}
+
+/*!
+Interface for classes implementing animation or progress bar of the loading
+screen. To customize the implementation, override Game::CreateLoadingAnim()
+function to return your own implementation of LoadingAnim. You should
+perform any expensive setup, such as loading UI layout, in the constructor
+to avoid freezes due to loading of resources when game shows the loading
+screen.
+
+\warning	Loading and initialization of resources are done asynchronously.
+			It is generally safe to access only types related to
+			WorkspaceWidget stored in LoadingAnim (such as child widgets
+			loaded using this WorkspaceWidget) and other variables that
+			cannot be changed from somewhere else (such as local variables
+			and member variables that are primitive types).
+*/
+class LoadingAnim
+{
+	WorkspaceWidget m_WorkspaceWidget;
+
+	void LoadingAnim(WorkspaceWidget workspaceWidget)
+	{
+		m_WorkspaceWidget = workspaceWidget;
+	}
+
+	/*!
+	Called just before loading animation is shown. You shouldn't perform any
+	expensive operations here (such as loading images and UI layouts) to avoid
+	freezes when loading screen is shown.
+
+	\warning	This function is called concurrently with loading and
+				initialization of resources (including scripted entities and
+				components). Do not access anything that may be modified from
+				somewhere else.
+	*/
+	void Show()
+	{
+	}
+
+	/*!
+	Used for updating the loading screen animations and progress bars.
+
+	Progress value is based on how many resources are still left in loading queue. However, loading
+	new resources can cause more things to be added to the queue, so this value can jump up and down
+	and these cases need to be handled, otherwise progress may appear to go backwards.
+
+	Some platforms require that loading screen is visible for at least certain minimum amount of time.
+	To account for this, minDurationRatio provides percentage of this minimum duration that has already
+	elapsed.
+
+	\warning	This function is called concurrently with loading and initialization
+				of resources (including scripted entities and components). Do not access
+				anything that may be modified somewhere else.
+
+	@param timeSlice		Time slice in seconds.
+	@param progress			Unmodified loading progress value between 0 and 1. This value may decrease.
+	@param minDurationRatio	Ratio of minimal duration that has already elapsed, between 0 and 1. This value never decreases.
+	*/
+	void Update(float timeSlice, float progress, float minDurationRatio)
+	{
+	}
+
+	/*!
+	Called when loading animation has finished and should be hidden.
+
+	\warning	This function is called concurrently with loading and
+				initialization of resources (including scripted entities and
+				components). Do not access anything that may be modified from
+				somewhere else.
+	*/
+	void Hide()
+	{
+	}
+}
+
+class BaseLoadingAnim: LoadingAnim
+{
+	protected const float MAX_ANGLE = 360;
+	protected static int s_NumReloads;  ///< Sets from engine side, number is increased after each game reinitialization  
+	protected Widget m_wRoot;
+	protected ImageWidget m_wProgressImage;
+	static protected float s_fProgress = 0;
+	
+	void Load()
+	{
+		m_wRoot = CreateLayout(m_WorkspaceWidget);
+		m_wProgressImage = ImageWidget.Cast(m_wRoot.FindAnyWidget("Throbber"));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void Unload()
+	{
+		delete m_wRoot;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void BaseLoadingAnim(WorkspaceWidget workspaceWidget)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~BaseLoadingAnim()
+	{
+		Unload();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	Widget CreateLayout(WorkspaceWidget workspaceWidget)
+	{
+		return workspaceWidget.CreateWidgets("{60A59D01C794CF8F}ui/baseLoadingScreen.layout");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Update(float timeSlice, float progress, float minDurationRatio)
+	{
+		if (!m_wProgressImage)
+			return;
+	
+		s_fProgress += timeSlice * MAX_ANGLE * 0.2;
+		if (s_fProgress >= MAX_ANGLE)
+			s_fProgress -= MAX_ANGLE;
+
+		m_wProgressImage.SetRotation(s_fProgress);
+	}
+	
+	override void Show()
+	{
+		if (!m_wRoot)
+			Load();
+	}
+	
+	override void Hide()
+	{
+		Unload();
+	}
+}
+
+void GameLibInit()
+{
+
+}
+
+//------------------------------------------------------------------------------------------------
+class StringTableItem
+{
+}
+
+//------------------------------------------------------------------------------------------------
+class ScriptStringTableItem: StringTableItem
+{
+	static string GetTargetPrefix();
+}
+
+//------------------------------------------------------------------------------------------------
+/*!
+\brief By inheriting of this class you define a settings module.
+\code
+// my settings module definition
+class MyGameSettings: ModuleGameSettings
+{
+	[Attribute()]
+	int speed;
+}
+
+// write my settings (ideally in setting menu?)
+void ChangeMySettings() 
+{
+	// approach #1
+	GetGame().GetGameUserSettings().GetModule("MyGameSettings").Set("speed", Math.RandomInt(0, 100));
+	
+	// approach #2
+	MyGameSettings settings = new MyGameSettings();
+	settings.speed = Math.RandomInt(0, 100);
+	BaseContainerTools.ReadFromInstance(settings, GetGame().GetGameUserSettings().GetModule("MyGameSettings"));
+	
+	// notify system about change
+	GetGame().UserSettingsChanged(); // -> here is also OnSpeedChanged() called
+	GetGame().SaveUserSettings(); // this is also call automatically during game exit, call it manually only on very important cases (like leaving settings menu)
+}
+
+// register to receive notification about changes
+void SomewhereInInit()
+{
+	GetGame().OnUserSettingsChangedInvoker().Insert(OnSpeedChanged);
+}
+
+// read my settings
+void OnSpeedChanged() 
+{
+	// approach #1
+	int speed;
+	GetGame().GetGameUserSettings().GetModule("MyGameSettings").Get("speed", speed);
+	Print("#1 Speed changed = " + speed);
+	
+	// approach #2
+	MyGameSettings settings = new MyGameSettings();
+	BaseContainerTools.WriteToInstance(settings, GetGame().GetGameUserSettings().GetModule("MyGameSettings"));
+	Print("#2 Speed changed = " + settings.speed);	
+}
+\endcode
+*/
+class ModuleGameSettings: ScriptAndConfig
+{
+}
+/**
+ \brief ScriptCallQueue Class provide "lazy" calls - when we don't want to execute function immediately but later during frame update (used mainly in UI)
+ \n usage:
+ @code
+	class MyGame extends Game
+	{
+		ref ScriptCallQueue m_CallQueue = new ScriptCallQueue();
+	
+		ScriptCallQueue GetCallqueue() { 
+			return m_CallQueue;
+		}
+	
+		override void OnUpdate(float timeslice)
+		{
+			m_CallQueue.Tick(timeslice);
+			...
+		}
+		...
+	}
+
+	class MyObject
+	{
+		int m_cnt = 0;
+	
+		void Hello(int p1, string p2)
+		{
+			Print("Hello( " + p1 + " , " + p2 + ")");
+		}
+	
+		void Test()
+		{
+			Print(m_cnt);
+			m_cnt++;
+			
+			if (m_cnt > 10)
+			{
+				ScriptCallQueue queue = g_Game.GetCallqueue();
+				queue.Remove(Test);
+			}
+		}
+	}
+
+	void Test(MyObject obj)
+	{
+		ScriptCallQueue queue = g_Game.GetCallqueue(); 
+		queue.CallLater(obj.Hello, 5000, false, 65, "world"); // adds call 'obj.Hello(65, "world")' into queue, and it will be executed once after 5s
+		queue.CallLater(obj.Test, 3000, true); // adds call 'obj.Test()' into queue, and it will be executed each 3s
+		queue.Call(obj.Hello, 72, "world 2"); // adds call 'obj.Hello(72, "world 2")' into queue, and it will be executed next frame (on next call of ScriptCallQueue.Tick)
+	}
+ @endcode
+ */
+class ScriptCallQueue
+{
+	//! executes calls on queue if their time is already elapsed, if 'repeat = false' call is removed from queue
+	proto native void Tick(float timeslice);
+	//! adds call into the queue with given parameters and arguments (arguments are holded in memory until the call is executed/removed or ScriptCallQueue is destroyed)
+	proto void Call(func fn, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
+	//! adds call into the queue with given parameters and arguments (arguments are holded in memory until the call is executed/removed or ScriptCallQueue is destroyed)
+	proto void CallByName(Managed obj, string fnName , void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
+	//! adds call into the queue with given parameters and arguments (arguments are holded in memory until the call is executed/removed or ScriptCallQueue is destroyed)
+	proto void CallLater(func fn, int delay = 0, bool repeat = false, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);	
+	//! adds call into the queue with given parameters and arguments (arguments are holded in memory until the call is executed/removed or ScriptCallQueue is destroyed)
+	proto void CallLaterByName(Managed obj, string fnName, int delay = 0, bool repeat = false, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);	
+	//! remove specific call from queue	
+	proto void Remove(func fn);
+	//! return Remaining time to the call execution (in miliseconds)
+	proto int GetRemainingTime(func fn);
+	//! remove specific call from queue	
+	proto void RemoveByName(Managed obj, string fnName);
+	//! return Remaining time to the call execution (in miliseconds)
+	proto int GetRemainingTimeByName(Managed obj, string fnName);
+	//! remove all calls from queue
+	proto native void Clear();
+	//! dump all callbacks into log
+	proto native void Dump();
+}
+
+/**
+ \brief ScriptInvoker Class provide list of callbacks
+ \n usage:
+ @code
+	class Player
+	{
+		ref ScriptInvoker m_DeathInvoker	= new ScriptInvoker();
+	
+		void OnKilled()
+		{
+			m_DeathInvoker.Invoke(this);		
+		}
+	}
+
+	void LogPlayerDeath(p)
+	{
+		Print("RIP " + p);
+	}		
+
+	class Game
+	{
+		void RemovePlayer(Player p)
+		{
+		}
+
+		void GameOver()
+		{
+		}
+	}
+
+	void OnPlayerSpaned(Player p)
+	{
+		Game game = g_Game;
+		p.m_DeathInvoker.Insert(LogPlayerDeath);
+		p.m_DeathInvoker.Insert(game.RemovePlayer);
+		p.m_DeathInvoker.Insert(game.GameOver);
+	}
+ @endcode
+ */
+class ScriptInvokerBase<Class T>: Managed
+{
+	//! invoke call on all inserted methods with given arguments
+	proto void Invoke(void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
+	//! insert method to list	
+	proto void Insert(T fn);	
+	//! remove specific call from list
+	proto void Remove(T fn);
+	//! remove all calls from list
+	proto native void Clear();
+	//! dump all callbacks into log
+	proto native void Dump();
+}
+
+typedef ScriptInvokerBase<func> ScriptInvoker;
+
+class AutotestBase
+{
+    static proto native void UpdateLastProcessingTime(float seconds);
+	static proto native bool IsLastProcessingTime_Signal();
+	static proto native void ResetLastProcessingTime_Signal();
+	static proto native void SetLastProcessingTime_Treshold(float seconds);
+}
+
+
+[BaseContainerProps()]
+class Bacon_5ABD0CB57F7E9EB1_AttachmentOffsetEntry {
+	[Attribute("", desc: "Pivot of the attachment. Storage will select FIRST matching attachment based on the pivot.")]
+	string m_sPivotName;
+	
+	[Attribute("0 0 0", desc: "Position offset to apply to the chosen attachment")]
+	vector m_vAttachmentOffset;
+
+	vector m_vSlotOriginalOffset;
+	int m_iSlotId = -1;
+	
+	void SetOriginalOffset(int slotId, vector offset) {
+		m_iSlotId = slotId;
+		m_vSlotOriginalOffset = offset;
+	}
+}
+
+class Bacon_5ABD0CB57F7E9EB1_AttachmentEffectsComponentClass: ScriptComponentClass {}
+class Bacon_5ABD0CB57F7E9EB1_AttachmentEffectsComponent: ScriptComponent {
+	[Attribute(desc: "Offset attribute collections")]
+	ref array<ref Bacon_5ABD0CB57F7E9EB1_AttachmentOffsetEntry> m_AttachmentPivotOffsets;
+}
+
+modded class SCR_WeaponAttachmentsStorageComponent {
+	private ref map<int, vector> m_SlotIdOffsets = new map<int, vector>;
+	
+	InventoryStorageSlot Bacon_FindSlotByPivotName(string pivotName) {
+		int slots = GetSlotsCount();
+		
+		InventoryStorageSlot slot;
+		for (int x = 0; x < slots; x++) {
+  			slot = GetSlot(x);
+			
+			if (!slot)
+				continue;
+			
+			if (slot.GetBoneName() == pivotName)
+				return slot;
+		}
+		
+		return null;
+	}
+	
+	override void OnAddedToSlot(IEntity item, int slotID) {
+		super.OnAddedToSlot(item, slotID);
+		
+		Bacon_5ABD0CB57F7E9EB1_AttachmentEffectsComponent effectsComponent = Bacon_5ABD0CB57F7E9EB1_AttachmentEffectsComponent.Cast(item.FindComponent(Bacon_5ABD0CB57F7E9EB1_AttachmentEffectsComponent));
+		if (!effectsComponent)
+			return;
+		
+		InventoryStorageSlot wantedSlot;
+		vector modelTransform[4];
+
+		foreach (Bacon_5ABD0CB57F7E9EB1_AttachmentOffsetEntry entry : effectsComponent.m_AttachmentPivotOffsets) {
+			wantedSlot = Bacon_FindSlotByPivotName(entry.m_sPivotName);
+			if (!wantedSlot)
+				continue;
+			
+			//Print("Found slot: "+entry.m_sPivotName);
+
+			wantedSlot.GetLocalTransform(modelTransform);
+
+			Print(string.Format("Before applied | Model transform: %1", modelTransform[3]), LogLevel.DEBUG);
+			
+			entry.SetOriginalOffset(wantedSlot.GetID(), modelTransform[3]);
+
+			modelTransform[3] = entry.m_vAttachmentOffset;
+
+			wantedSlot.SetAdditiveTransformLS(modelTransform);
+			wantedSlot.Set(GetOwner(), wantedSlot.GetBoneName(), modelTransform);
+
+			Print(string.Format("After applied | Model transform: %1", modelTransform[3]), LogLevel.DEBUG);
+		}
+		
+		GetOwner().Update();
+	}
+	
+	override void OnRemovedFromSlot(IEntity item, int slotID) {
+		super.OnRemovedFromSlot(item, slotID);
+		
+		Bacon_5ABD0CB57F7E9EB1_AttachmentEffectsComponent effectsComponent = Bacon_5ABD0CB57F7E9EB1_AttachmentEffectsComponent.Cast(item.FindComponent(Bacon_5ABD0CB57F7E9EB1_AttachmentEffectsComponent));
+		if (!effectsComponent)
+			return;
+		
+		InventoryStorageSlot wantedSlot;
+		vector modelTransform[4];
+		IEntity attached;
+		
+		foreach (Bacon_5ABD0CB57F7E9EB1_AttachmentOffsetEntry entry : effectsComponent.m_AttachmentPivotOffsets) {
+			if (entry.m_iSlotId < 0)
+				continue;
+			
+			wantedSlot = GetSlot(entry.m_iSlotId);
+			if (!wantedSlot)
+				continue;
+
+			wantedSlot.GetModelTransform(modelTransform);
+			
+			Print(string.Format("Before remove applied | Model transform: %1", modelTransform[3]), LogLevel.DEBUG);
+
+			modelTransform[3] = entry.m_vSlotOriginalOffset;
+			wantedSlot.Set(GetOwner(), wantedSlot.GetBoneName(), modelTransform);
+
+			attached = wantedSlot.GetAttachedEntity();
+			if (attached)
+			    attached.SetLocalTransform(modelTransform);
+			
+			Print(string.Format("After remove applied | Model transform: %1", modelTransform[3]), LogLevel.DEBUG);
+			
+			entry.m_iSlotId = -1;
+		}
+	}
+}
+
+

@@ -1,0 +1,2823 @@
+// Script File
+
+[EntityEditorProps(category: "GameLib/Scripted/Autotest", description:"MotionAutoTest", dynamicBox: true)]
+class MotionAutoTestClass: GenericEntityClass
+{
+}
+
+class Measurement
+{
+	float m_Min = 100000000000;
+	float m_Max = 0;
+	int m_CountSamples = 0;
+	float m_CurrentSum = 0;
+	
+	void AddValue(float value)
+	{
+		if (value < m_Min)
+		{
+			m_Min = value;
+		}
+		
+		if (value >= m_Max)
+		{
+			m_Max = value;
+		}
+		
+		m_CurrentSum += value;
+		m_CountSamples++;
+	}
+	
+	float ComputeAverage()
+	{
+		if (m_CountSamples <= 0)
+			return 0;
+		return m_CurrentSum / (float)m_CountSamples;
+	}
+}
+
+[EntityEditorProps(category: "GameLib/Scripted/Autotest", description:"MotionZonePoint", dynamicBox: true)]
+class MotionZonePointClass: GenericEntityClass
+{
+}
+
+class MotionZonePoint : GenericEntity
+{
+	void MotionZonePoint(IEntitySource src, IEntity parent)
+	{
+		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
+		SetFlags(EntityFlags.ACTIVE, true);
+		
+		parent.AddChild(this, -1);
+	}
+}
+
+[EntityEditorProps(category: "GameLib/Scripted/Autotest", description:"MotionZone", dynamicBox: true)]
+class MotionZoneClass: GenericEntityClass
+{
+}
+
+class MotionZone : GenericEntity
+{
+	vector m_Min;
+	vector m_Max;
+	
+	void MotionZone(IEntitySource src, IEntity parent)
+	{
+		SetEventMask(EntityEvent.INIT);
+		SetFlags(EntityFlags.ACTIVE, true);
+		
+		m_Min = Vector(0, 0, 0);
+		m_Max = Vector(0, 0, 0);
+	}
+	
+	vector GetMin()
+	{
+		return m_Min;
+	}
+	
+	vector GetMax()
+	{
+		return m_Max;
+	}
+
+	void ~MotionZone()
+	{		
+	}
+	
+	void Initialize()
+	{
+		IEntity ent1st = MotionZonePoint.Cast(GetChildren());
+		IEntity ent2nd = ent1st.GetSibling();
+		
+		vector p1 = ent1st.GetOrigin();
+		vector p2 = ent2nd.GetOrigin();
+		
+		m_Min[0] = Math.Min(p1[0], p2[0]);
+		m_Min[1] = Math.Min(p1[1], p2[1]);
+		m_Min[2] = Math.Min(p1[2], p2[2]);
+		
+		m_Max[0] = Math.Max(p1[0], p2[0]);
+		m_Max[1] = Math.Max(p1[1], p2[1]);
+		m_Max[2] = Math.Max(p1[2], p2[2]);
+	}
+	
+	override void EOnInit(IEntity owner)
+	{
+		Initialize();
+	}
+}
+
+class MotionAutoTest: GenericEntity
+{
+	[Attribute("Camera1", UIWidgets.EditBox, "Name of camera entity", "")]
+	private string m_cameraEntityName; //< name of camera entity which will be used to take screenshots
+
+	[Attribute("60", UIWidgets.Slider, "Which FPS is considered as minimal", "0 240 1")]
+	private float m_FPSLimit; //< this time is waited for the screenshot to be captured and saved on disk
+	
+	[Attribute("1.8", UIWidgets.Slider, "Distance between surface and camera on y-axis", "0 20 0.1")]
+	private float m_HeightAboveSurface;
+	[Attribute("5", UIWidgets.Slider, "Movement speed", "0 100 1")]
+	private float m_MovementSpeed;
+
+	[Attribute("true", UIWidgets.CheckBox, "If true a path is generated otherwise the path is created from child waypoints")]
+	private bool m_GeneratePath;
+	[Attribute("false", UIWidgets.CheckBox, "If true the generated path is drawn as a line - for debug purposes")]
+	private bool m_ShowGeneratePath;
+	[Attribute("0.15", UIWidgets.Slider, "The scale of the generated path that is centered in the map center", "0 1 0.01")]
+	private float m_GeneratedPathScale; 
+	[Attribute("10", UIWidgets.Slider, "Number of sectors for the generated path", "1 100 1")]
+	private float m_GeneratedPathSectorsCount;
+
+	private IEntity m_camera;
+	private Screenshot_Waypoint m_waypoint;
+	private string m_directory;
+	
+	private TextWidget m_FPSWidget;
+	
+	private ref array<Shape> m_CreatedLines;
+	
+	private float m_fTimeToTravel = -1;
+	private float m_fTimeTraveled = 0;
+	
+	private int m_iCurrentPointsI;
+	private ref array<vector> m_Points;
+	protected float m_timeFromStart;
+	protected float m_timeLastStatsSnapshot;
+	
+	private ref Measurement m_MeasureFPS;
+	private ref Measurement m_MeasureMemory;
+	
+	private ref array<ref Measurement> m_MeasurementMemory;
+	
+	[Attribute("MotionZone", UIWidgets.EditBox, "Motion Zone Object Name", "")]
+	private string m_MotionZone;
+	
+	private MotionZone m_MotionZoneInstance;
+	
+	void MotionAutoTest(IEntitySource src, IEntity parent)
+	{
+		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
+		SetFlags(EntityFlags.ACTIVE, true);
+		m_CreatedLines = new array<Shape>();
+		m_MeasureFPS = new Measurement();
+		m_MeasureMemory = new Measurement();
+		m_MeasurementMemory = new array<ref Measurement>();
+		int mc = MemoryStatsSnapshot.GetStatsCount();
+		for (int i = 0; i < mc; i++)
+		{
+			m_MeasurementMemory.Insert(new Measurement());
+		}
+		
+		m_timeLastStatsSnapshot = 0;
+
+		System.GetCLIParam("autotest-output-dir", m_directory);
+
+		if (m_directory.Length() == 0)
+		{
+			m_directory = "$logs:" + GetName();
+		}
+	}
+
+	void ~MotionAutoTest()
+	{		
+		
+		for (int i = 0; i < m_CreatedLines.Count(); i++)
+		{
+			Shape s = m_CreatedLines[i];
+			delete s;
+		}
+		
+		delete m_CreatedLines;
+		delete m_Points;		
+		
+	}
+	
+	void UpdateMeasurements()
+	{
+		int f = System.GetFPS();
+		
+		m_MeasureFPS.AddValue(f);
+		m_MeasureMemory.AddValue(System.MemoryAllocationKB());
+		
+		if (m_timeFromStart - m_timeLastStatsSnapshot > 2)
+		{
+			m_timeLastStatsSnapshot = m_timeFromStart;
+
+			auto snapshot = new MemoryStatsSnapshot();
+			int count = snapshot.GetStatsCount();
+			for (int i = 0; i < count; i++)
+			{
+				int value = snapshot.GetStatValue(i);
+				m_MeasurementMemory[i].AddValue(value);
+			}
+		}
+	}
+	
+	void CreateLines(array<vector> points, int color)
+	{
+		for (int i = 0; i < points.Count(); i++)
+		{
+			if (i + 1 < points.Count())
+			{
+				vector ppp[2];
+				ppp[0] = points[i];
+				ppp[1] = points[i + 1];
+				
+				m_CreatedLines.Insert(Shape.CreateLines(color, ShapeFlags.VISIBLE, ppp, 2));
+			}
+		}
+	}
+	
+	private void GeneratePathFromWaypoints()
+	{
+		m_Points = new array<vector>();
+		IEntity ee = GetChildren();				
+
+		while (ee)
+		{
+			if (ee.GetSibling())
+			{
+				m_Points.Insert(ee.GetOrigin());
+			}
+			else
+			{
+				if (ee)
+				{
+					m_Points.Insert(ee.GetOrigin());
+				}
+			}
+
+			Print("??? -> " + ee.GetName());
+			ee = ee.GetSibling();
+		}	
+	}
+	
+	private void GeneratePath()
+	{
+		if (m_MotionZoneInstance)
+		{
+			Print("Bouding Area of motion zone |" + m_MotionZoneInstance.m_Min + "|" + m_MotionZoneInstance.m_Max);
+			
+			Initialize(m_GeneratedPathScale, m_GeneratedPathSectorsCount, m_MotionZoneInstance.m_Min, m_MotionZoneInstance.m_Max);
+		}
+		else
+		{
+			vector mmin;
+			vector mmax;
+			GetWorld().GetBoundBox(mmin, mmax);
+		
+			Print("World Bouding box |" + mmin + "|" + mmax);
+			
+			Initialize(m_GeneratedPathScale, m_GeneratedPathSectorsCount, mmin, mmax);
+		}
+	}
+	
+	override void EOnInit(IEntity owner) //!EntityEvent.INIT
+	{
+		m_camera = g_Game.FindEntity(m_cameraEntityName);
+
+		if (!m_camera)
+		{
+			Print("Camera not found 2!", LogLevel.ERROR);
+		}
+		
+		m_MotionZoneInstance = MotionZone.Cast(g_Game.FindEntity(m_MotionZone));
+		
+		if (m_MotionZoneInstance != null)
+		{
+			m_MotionZoneInstance.Initialize();
+		}
+		
+		
+		if (m_GeneratePath)
+		{		
+			GeneratePath();
+		}
+		else
+		{
+			GeneratePathFromWaypoints();
+		}
+	
+		TransformCameraToWaypoint();
+		
+		m_FPSWidget = TextWidget.Cast(g_Game.GetWorkspace().CreateWidgetInWorkspace(WidgetType.TextWidgetTypeID, 16, 16, 512, 128, WidgetFlags.VISIBLE, new Color(0.0, 0.0, 0.0, 1.0), 1024));
+		m_FPSWidget.SetExactFontSize(64);
+	}
+	
+	private void MakeSummeryFile(string filename)
+	{
+		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+
+		if(descrFile)
+		{
+			int sizeX = g_Game.GetWorkspace().GetWidth();
+			int sizeY = g_Game.GetWorkspace().GetHeight();
+			descrFile.WriteLine(string.Format("MOTION AUTO TEST"));
+			descrFile.WriteLine(string.Format("Resolution (px): %1x%2", sizeX, sizeY));
+#ifdef WORKBENCH
+			descrFile.WriteLine(string.Format("Entering playmode time (s): %1", g_Game.GetLoadTime() / 1000));
+#else
+			descrFile.WriteLine(string.Format("Load time (s): %1", g_Game.GetLoadTime() / 1000));
+#endif
+			descrFile.WriteLine(string.Format("Duration (s): %1", m_timeFromStart));
+			
+			descrFile.WriteLine(string.Format("FPS average: %1", m_MeasureFPS.ComputeAverage()));
+			descrFile.WriteLine(string.Format("FPS min: %1", m_MeasureFPS.m_Min));
+			descrFile.WriteLine(string.Format("FPS max: %1", m_MeasureFPS.m_Max));
+			
+			int count = MemoryStatsSnapshot.GetStatsCount();
+			for (int i = 0; i < count; i++)
+			{
+				string name = MemoryStatsSnapshot.GetStatName(i);
+				descrFile.WriteLine(string.Format("%1 average: %2", name, (int)m_MeasurementMemory[i].ComputeAverage()));
+				descrFile.WriteLine(string.Format("%1 min: %2", name, (int)m_MeasurementMemory[i].m_Min));
+				descrFile.WriteLine(string.Format("%1 max: %2", name, (int)m_MeasurementMemory[i].m_Max));
+			}
+			
+			descrFile.WriteLine(string.Format("Timestamp: %1", GetCurrentTimestamp()));
+			
+			descrFile.Close();
+			Print("Summary file successfully saved into " + filename);
+		}
+	}
+	
+	private void MakeCSVFile(string filename)
+	{
+		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+		
+		if (!descrFile)
+			return;
+		
+		int sizeX = g_Game.GetWorkspace().GetWidth();
+		int sizeY = g_Game.GetWorkspace().GetHeight();
+		
+		string CSVFormatString = "Resolution (px),Load time (s),Duration (s),FPS average (s),FPS min (s),FPS max (s)";
+		string CSVResultString = string.Format("%1x%2,%3,%4,%5,%6,%7", sizeX, sizeY, g_Game.GetLoadTime() * 0.001, m_timeFromStart, m_MeasureFPS.ComputeAverage(), m_MeasureFPS.m_Min, m_MeasureFPS.m_Max);
+		
+		int count = MemoryStatsSnapshot.GetStatsCount();
+		for (int i = 0; i < count; i++)
+		{
+			CSVFormatString += string.Format(",%1 average,%1 min,%1 max", MemoryStatsSnapshot.GetStatName(i));
+			CSVResultString += string.Format(",%1,%2,%3", (int)m_MeasurementMemory[i].ComputeAverage(), (int)m_MeasurementMemory[i].m_Min, (int)m_MeasurementMemory[i].m_Max);
+		}
+		
+		CSVFormatString += ",Timestamp";
+		CSVResultString += string.Format(",%1", GetCurrentTimestamp());
+		
+		descrFile.WriteLine(CSVFormatString);
+		descrFile.WriteLine(CSVResultString);
+		
+		descrFile.Close();
+		Print("CSV file successfully saved into " + filename);
+	}
+	
+	private string GetCurrentTimestamp()
+	{
+		int year, month, day;
+		System.GetYearMonthDay(year, month, day);
+		return string.Format("%1-%2-%3", year.ToString(4), month.ToString(2), day.ToString(2));
+	}
+	
+	override void EOnFrame(IEntity owner, float timeSlice) //!EntityEvent.FRAME
+	{	
+		g_Game.GetInputManager().ActivateContext("BlockInputContext");
+		
+		//DO FPS
+		int fps = System.GetFPS();
+		m_FPSWidget.SetText("FPS " + fps);
+		if (fps < m_FPSLimit)
+			m_FPSWidget.SetColor(new Color(1.0, 0.0, 0.0, 1.0));
+		else
+			m_FPSWidget.SetColor(new Color(0.0, 1.0, 0.0, 1.0));
+		
+		vector destination;
+		vector direction;
+
+		vector output[2];
+		UpdatePosition(timeSlice, output);
+		
+		destination = output[0];
+		direction = output[1];
+
+		m_camera.SetYawPitchRoll(direction);
+		
+		m_camera.SetOrigin(destination);		
+		
+		if (m_iCurrentPointsI > m_Points.Count())
+		{
+			FileIO.MakeDirectory(m_directory);
+			string summeryFilename = string.Format("%1/%2", m_directory, "summary.txt");
+			MakeSummeryFile(summeryFilename);
+			string csvFilename = string.Format("%1/%2", m_directory, "summary.csv");
+			MakeCSVFile(csvFilename);
+			Print("Autotest Finished; result in " + m_directory);
+			g_Game.RequestClose();
+		}
+		
+		UpdateMeasurements();
+		
+		m_timeFromStart += timeSlice;
+	}
+	
+	float dCc = 0;
+	float prevQuatCc[4];
+	float currentQuatCc[4];
+	bool onceOnly = false;
+	
+	private void UpdatePosition(float timeSlice, vector output[2])
+	{
+		UpdateState();
+
+		float quat[4];
+		vector pos = ComputePosition();
+		vector orientation = ComputeOrientation(quat);
+
+		output[0] = pos;
+		output[1] = orientation;
+		
+		if (onceOnly == false)
+		{
+			onceOnly = true;
+			Math3D.QuatCopy(quat, prevQuatCc);
+			Math3D.QuatCopy(quat, currentQuatCc);
+		}
+		
+		UpdateTime(timeSlice);
+		
+		//handle camera rotation based on terrain inclination
+		vector posNext = ComputePosition();
+		
+		vector dir = posNext - pos;
+		float d = dir.NormalizeSize();
+
+		vector mat[4];
+		Math3D.DirectionAndUpMatrix(dir, vector.Up, mat);
+		
+		float quat2[4];
+		Math3D.MatrixToQuat(mat, quat2);
+
+		if (CompareQuat(currentQuatCc, quat2) == false)
+		{
+			float outQuat2[4];
+			Math3D.QuatLerp(outQuat2, prevQuatCc, currentQuatCc, dCc);
+			
+			dCc = 0;
+			Math3D.QuatCopy(outQuat2, prevQuatCc);
+			Math3D.QuatCopy(quat2, currentQuatCc);
+		}
+		
+		float outQuat[4];
+		Math3D.QuatLerp(outQuat, prevQuatCc, currentQuatCc, dCc);
+		
+		output[1] = Math3D.QuatToAngles(outQuat);
+		
+		dCc += 0.75 * timeSlice;
+
+		Math.Clamp(dCc, 0, 1);
+	}
+	
+	//returns true if q1 "equals" q2
+	private bool CompareQuat(float q1[4], float q2[4])
+	{
+		if (
+			Math.AbsFloat(q1[0] - q2[0]) < 0.0001 &&
+			Math.AbsFloat(q1[1] - q2[1]) < 0.0001 &&
+			Math.AbsFloat(q1[2] - q2[2]) < 0.0001 &&
+			Math.AbsFloat(q1[3] - q2[3]) < 0.0001
+		)
+		{
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private void UpdateState()
+	{
+		if (m_fTimeToTravel >= 0 && m_fTimeTraveled > m_fTimeToTravel)
+		{
+			m_iCurrentPointsI++;
+		}
+		
+		if (m_iCurrentPointsI + 1 >= m_Points.Count())
+		{
+			return;
+		}
+
+		if (m_fTimeToTravel < 0 || m_fTimeTraveled >= m_fTimeToTravel)
+		{
+			vector start = m_Points[m_iCurrentPointsI];
+			vector end = m_Points[m_iCurrentPointsI + 1];
+
+			float distance = (end - start).Length();
+	
+			m_fTimeToTravel = distance / m_MovementSpeed;
+			m_fTimeTraveled = 0;
+			//Print("??? CHECKPOINT " + m_iCurrentPointsI + "/" + m_Points.Count());
+		}
+	}
+	
+	private void UpdateTime(float timeDelta)
+	{
+		m_fTimeTraveled += timeDelta;
+	}
+	
+	private vector ComputePosition()
+	{		
+		if (m_iCurrentPointsI + 1 >= m_Points.Count())
+		{
+			//Print("!!! CHECKPOINT " + m_iCurrentPointsI + "/" + m_Points.Count());
+			return m_Points[m_Points.Count() - 1];
+		}
+		
+		vector start = m_Points[m_iCurrentPointsI];
+		vector end = m_Points[m_iCurrentPointsI + 1];
+		
+		vector dir = (end - start);
+		float t = m_fTimeTraveled / m_fTimeToTravel;
+		
+		vector ret = start + t * dir;
+		ret[1] = GetYDistance(ret[0], ret[2]) + m_HeightAboveSurface;
+		
+		return ret;
+	}
+	
+	private vector ComputeOrientation(out float quatOrientationOut[4])
+	{
+		vector start;
+		vector end;
+
+		if (m_iCurrentPointsI + 1 >= m_Points.Count())
+		{
+			start = m_Points[m_Points.Count() - 2];
+			end = m_Points[m_Points.Count() - 1];
+		}
+		else
+		{
+			start = m_Points[m_iCurrentPointsI];
+			end = m_Points[m_iCurrentPointsI + 1];
+		}
+		
+		vector dir = (end - start);
+		float t = m_fTimeTraveled / m_fTimeToTravel;
+		vector currentPosition = start + t * dir;
+		
+		float d = dir.NormalizeSize();
+		vector mat[4];
+		Math3D.DirectionAndUpMatrix(dir, vector.Up, mat);				
+		
+		float quat[4];
+		Math3D.MatrixToQuat(mat, quat);
+		quatOrientationOut = quat;
+
+		vector retDirAngles = Math3D.QuatToAngles(quat);
+
+		float dCurrent = (end - currentPosition).Length();
+		
+		if (dCurrent < 0.1 * d && m_iCurrentPointsI < m_Points.Count() && m_iCurrentPointsI +2 < m_Points.Count())
+		{			
+			start = m_Points[m_iCurrentPointsI + 1];
+			end = m_Points[m_iCurrentPointsI + 2];
+			
+			dir = (end - start);
+			dir.Normalize();
+
+			Math3D.DirectionAndUpMatrix(dir, vector.Up, mat);				
+			
+			float quat2[4];
+			Math3D.MatrixToQuat(mat, quat2);
+			quatOrientationOut = quat2;
+			
+			float ttt = (dCurrent / (0.1 * d));
+			
+			float outQuat[4];
+			Math3D.QuatLerp(outQuat, quat, quat2, 1 - ttt);
+			
+			retDirAngles = Math3D.QuatToAngles(outQuat);
+		}
+		
+		return retDirAngles;
+	}
+	
+	private string QuatToString(float q[4])
+	{
+		return "(" + q[0] + "," + q[1] + "," + q[2] + "," + q[3] + ")";
+	}
+	
+	private void Initialize(float scale, int sectorCount, vector rectangleMin, vector rectangleMax)
+	{
+		m_Points = new array<vector>();
+		
+		float xx = scale * rectangleMax[0] - rectangleMin[0];
+		float zz = scale * rectangleMax[2] - rectangleMin[2];
+				
+		float shiftx = 0.5 * ((rectangleMax[0] - rectangleMin[0]) - xx);
+		float shiftz = 0.5 * ((rectangleMax[2] - rectangleMin[2]) - zz);
+		
+		float zstep = zz;
+		if (sectorCount > 1)
+		{
+			zstep = zz / (sectorCount - 1);
+		}
+		
+		for (int i = 0; i < sectorCount; i++)
+		{
+			float z = i * zstep;
+			if ((i % 2) == 0)
+			{
+				vector v = Vector(shiftx, 0, shiftz) + Vector(rectangleMin[0], 0.0, rectangleMin[2] + z);
+				v[1] = GetYDistance(v[0], v[2]) + m_HeightAboveSurface;				
+				m_Points.Insert(v);
+				
+				v = Vector(shiftx, 0, shiftz) + Vector(rectangleMin[0] + xx, 0.0, rectangleMin[2] + z);
+				v[1] = GetYDistance(v[0], v[2]) + m_HeightAboveSurface;
+				m_Points.Insert(v);
+			}
+			else
+			{
+				vector v = Vector(shiftx, 0, shiftz) + Vector(rectangleMin[0] + xx, 0.0, rectangleMin[2] + z);
+				v[1] = GetYDistance(v[0], v[2]) + m_HeightAboveSurface;				
+				m_Points.Insert(v);
+				
+				v = Vector(shiftx, 0, shiftz) + Vector(rectangleMin[0], 0.0, rectangleMin[2] + z);
+				v[1] = GetYDistance(v[0], v[2]) + m_HeightAboveSurface;
+				m_Points.Insert(v);
+			}
+		}
+		
+		if (m_ShowGeneratePath == true)
+		{
+			CreateLines(m_Points, ARGB(255, 255, 255, 255));
+		}
+	
+		m_iCurrentPointsI = 0;
+	}
+	
+	private float GetYDistance(float x, float z)
+	{
+		float wy = GetWorld().GetSurfaceY(x, z);
+		float oh = 0;		
+		if (GetWorld().IsOcean())
+		{
+			oh = GetWorld().GetOceanBaseHeight();
+			oh = Math.Ceil(Math.AbsFloat(oh));
+		}
+		
+		float hh = wy;
+		if (oh > wy)
+		{
+			hh = oh;
+		}
+		
+		return hh;
+	}
+	
+	private void TransformCameraToWaypoint()
+	{
+		if (m_waypoint && m_camera)
+		{			
+			vector mat[4];
+			m_waypoint.GetTransform(mat);
+			m_camera.SetTransform(mat);
+			m_waypoint.EOnEnter();
+		}
+	}
+}
+
+/*!
+\defgroup ScreenshotAutotest Screenshot autotest
+\{
+*/
+
+[EntityEditorProps(category: "GameLib/Scripted/Autotest", description:"Screenshot_autotest", dynamicBox: true)]
+class Screenshot_AutotestClass: GenericEntityClass
+{
+}
+
+[EntityEditorProps(category: "GameLib/Scripted/Autotest", description:"Screenshot_waypoint", dynamicBox: true)]
+class Screenshot_WaypointClass: GenericEntityClass
+{
+}
+
+//----------------------------------------------
+
+/*!
+Autotest entity for taking screenshots. It sets specific camera transformation to values of waypoints which needs to be set as a child. The child needs to be Screenshot_Waypoint entity.
+First it sets camera transform to the waypoint defined as a child, then it waits a step time on order to have everything loaded and stable FPS, then it takes a screenshots and since the screenshot is taken across several frames, it waits for this as well.
+When the camera is transformed to the position and rotation of the waypoint entity, the EOnEnter method is called on the waypoint entity. Some custom code can be executed here.
+Screenshots are save into $logs:ENTITY_NAME directory by default. This can be overriden by executable parameter autotest-output-dir (DO NOT PLACE ENDING '/' AFTER THE DIR PATH)
+Besides the screenshot itself, also a metafile is saved with addition information (position, orientation, fps). The name of the metafile is the same as the screenshot with .txt as a suffix and it is saved into the same location
+Autotest can also store summary information, the it is stored in the summary.txt file.
+*/
+class Screenshot_Autotest: GenericEntity
+{
+	[Attribute("1980", UIWidgets.SpinBox, "Year", "1900 2100 1")]
+	private int m_defaultYear;
+	
+	[Attribute("8", UIWidgets.SpinBox, "Month", "1 12 1")]
+	private int m_defaultMonth;
+	
+	[Attribute("20", UIWidgets.SpinBox, "Day", "1 31 1")]
+	private int m_defaultDay;
+	
+	[Attribute("12.0", UIWidgets.Slider, "Default Time of the Day", "0 24 0.01")]
+	private float m_defaultTimeOfTheDay;
+	
+	[Attribute("Clear", UIWidgets.EditBox, "Default Weather State", "")]
+	private string m_defaultWeatherState;
+	
+	
+	[Attribute("Camera1", UIWidgets.EditBox, "Name of camera entity", "")]
+	private string m_cameraEntityName; //< name of camera entity which will be used to take screenshots
+	[Attribute("", UIWidgets.EditBox, "Autotest description", "")]
+	private string m_description; //< description of the autotest
+
+	[Attribute("1", UIWidgets.Slider, "Wait time in the waypoint before taking screenshot", "0 20 0.1")]
+	private float m_stepWaitTime; //< this time is waited before taking screenshot
+	[Attribute("2", UIWidgets.Slider, "Wait time in the waypoint after preload", "0 5 0.1")]
+	private float m_WaitTimeAfterPreload; //< this time is waited after preload
+	[Attribute("1", UIWidgets.Slider, "Wait time for the screenshot to be made", "0 20 0.1")]
+	private float m_screenshotWaitTime; //< this time is waited for the screenshot to be captured and saved on disk
+	[Attribute("60", UIWidgets.Slider, "Which FPS is considered as minimal", "0 240 1")]
+	private float m_FPSLimit; //< this time is waited for the screenshot to be captured and saved on disk
+	[Attribute("true", UIWidgets.CheckBox, "Generate summary file")]
+	private bool m_summary;
+
+	protected float m_timer;
+	protected float m_timeFromStart;
+	protected float m_timerAfterPreload;
+
+	private IEntity m_camera;
+	private Screenshot_Waypoint m_waypoint;
+	private float  m_timeFromScreenshot;
+	private string m_directory;
+
+	private TextWidget m_FPSWidget;
+
+	void Screenshot_Autotest(IEntitySource src, IEntity parent)
+	{
+		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
+		SetFlags(EntityFlags.ACTIVE, true);
+
+		System.GetCLIParam("autotest-output-dir", m_directory);
+
+		if (m_directory.Length() == 0)
+		{
+			m_directory = "$logs:" + GetName();
+		}
+	}
+
+	void ~Screenshot_Autotest()
+	{
+		delete m_FPSWidget;
+	}
+	
+	float GetDefaultTimeOfTheDay()
+	{
+		return m_defaultTimeOfTheDay; 
+	}
+	
+	int GetDefaultYear()
+	{
+		return m_defaultYear;
+	}
+	
+	int GetDefaultMonth()
+	{
+		return m_defaultMonth;
+	}
+	
+	int GetDefaultDay()
+	{
+		return m_defaultDay;
+	}
+	
+	string GetDefaultWeatherState()
+	{
+		return m_defaultWeatherState;
+	}
+
+	override void EOnInit(IEntity owner) //!EntityEvent.INIT
+	{
+		m_camera = g_Game.FindEntity(m_cameraEntityName);
+		m_waypoint = Screenshot_Waypoint.Cast(GetChildren());
+
+		if (!m_camera)
+		{
+			Print("Camera not found!", LogLevel.ERROR);
+		}
+
+		if (!m_waypoint)
+		{
+			Print("No waypoints for screenshots!", LogLevel.WARNING);
+		}
+
+		TransformCameraToWaypoint();
+
+		m_FPSWidget = TextWidget.Cast(g_Game.GetWorkspace().CreateWidgetInWorkspace(WidgetType.TextWidgetTypeID, 16, 16, 512, 128, WidgetFlags.VISIBLE, new Color(0.0, 0.0, 0.0, 1.0), 1024));
+		m_FPSWidget.SetExactFontSize(64);
+	}
+
+	override void EOnFrame(IEntity owner, float timeSlice) //!EntityEvent.FRAME
+	{
+		g_Game.GetInputManager().ActivateContext("BlockInputContext");
+		
+		if (!m_camera)
+		{
+			Print("Exiting the game", LogLevel.WARNING);
+			g_Game.RequestClose();
+		}
+
+		if (!m_waypoint)
+		{
+			Print("No waypoints for next screenshot");
+			if (m_summary)
+			{
+				string summaryFilename = string.Format("%1/%2", m_directory, "summary.txt");
+				MakeSummaryFile(summaryFilename);
+				summaryFilename = string.Format("%1/%2", m_directory, "summary.csv");
+				MakeCSVSummaryFile(summaryFilename);
+			}
+			g_Game.RequestClose();
+		}
+
+		if (!g_Game.IsPreloadFinished())
+		{
+			m_timerAfterPreload = 0;
+			m_FPSWidget.SetColor(new Color(1.0, 1.0, 1.0, 1.0));
+			m_FPSWidget.SetText("Preloading");
+			return;
+		}
+		
+		if (m_timerAfterPreload < m_WaitTimeAfterPreload)
+		{
+			m_timerAfterPreload += timeSlice;
+			m_FPSWidget.SetColor(new Color(1.0, 1.0, 1.0, 1.0));
+			m_FPSWidget.SetText("Waiting after preload...");
+			return;
+		}
+		
+		int fps = System.GetFPS();
+		m_FPSWidget.SetText("FPS " + fps);
+		if (fps < m_FPSLimit)
+			m_FPSWidget.SetColor(new Color(1.0, 0.0, 0.0, 1.0));
+		else
+			m_FPSWidget.SetColor(new Color(0.0, 1.0, 0.0, 1.0));
+
+		if (m_timer > m_stepWaitTime && m_timeFromScreenshot == 0)
+		{
+			m_timer = 0;
+
+			string screenshotFilename = string.Format("%1/%2.bmp", m_directory, m_waypoint.GetName());
+			string metadataFilename = screenshotFilename + ".txt";
+			string summaryFilename = string.Format("%1/%2", m_directory, "summary_locations.csv");
+
+			m_timeFromScreenshot = m_timeFromStart;
+
+			FileIO.MakeDirectory(m_directory); // no need to create it for every screenshot, but better then have it in constructor or in init, because directory would be created when placing entity into the world in editor which might not be intended
+			MakeLocationsCSVSummaryFile(summaryFilename);
+			MakeScreenshotMetafile(metadataFilename);
+			System.MakeScreenshot(screenshotFilename);
+		}
+
+		if (m_timeFromScreenshot == 0)
+		{
+			m_timer += timeSlice; // increment timer only when we are not taking screenshots
+		}
+		else if (m_timeFromScreenshot + m_screenshotWaitTime < m_timeFromStart)
+		{
+			m_timeFromScreenshot = 0; // screenshot wait time is up, go to the next waypoint
+			if(m_waypoint) m_waypoint.EOnExit();
+			m_waypoint = Screenshot_Waypoint.Cast(m_waypoint.GetSibling());
+			TransformCameraToWaypoint();
+		}
+
+		m_timeFromStart += timeSlice;
+	}
+
+	private void MakeSummaryFile(string filename)
+	{
+		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+
+		if(descrFile)
+		{
+			if (m_description.Length() > 0)
+				descrFile.WriteLine(string.Format("%1", m_description));
+			int sizeX = g_Game.GetWorkspace().GetWidth();
+			int sizeY = g_Game.GetWorkspace().GetHeight();
+			
+			descrFile.WriteLine(string.Format("Resolution (px): %1x%2", sizeX, sizeY));
+#ifdef WORKBENCH
+			descrFile.WriteLine(string.Format("Entering playmode time (s): %1", g_Game.GetLoadTime() / 1000));
+#else
+			descrFile.WriteLine(string.Format("Load time (s): %1", g_Game.GetLoadTime() / 1000));
+#endif
+			descrFile.WriteLine(string.Format("Memory (MB): %1", System.MemoryAllocationKB() / 1024));
+			descrFile.WriteLine(string.Format("Allocations: %1", System.MemoryAllocationCount()));
+			descrFile.WriteLine(string.Format("Duration (s): %1", m_timeFromStart));
+			descrFile.Close();
+			Print("Summary file successfully saved into " + filename);
+		}
+	}
+
+	private void MakeCSVSummaryFile(string filename)
+	{
+		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+
+		if(descrFile)
+		{
+			int sizeX = g_Game.GetWorkspace().GetWidth();
+			int sizeY = g_Game.GetWorkspace().GetHeight();
+
+			descrFile.WriteLine("Resolution (px),Load time (s),Memory (MB),Allocations,Duration (s),Timestamp");
+			descrFile.WriteLine(string.Format("%1x%2,%3,%4,%5,%6,%7",
+				sizeX, sizeY,
+				g_Game.GetLoadTime() / 1000,
+				System.MemoryAllocationKB() / 1024,
+				System.MemoryAllocationCount(),
+				m_timeFromStart,
+				GetCurrentTimestamp()
+			));
+
+			descrFile.Close();
+			Print("Summary file successfully saved into " + filename);
+		}
+	}
+
+	private void MakeLocationsCSVSummaryFile(string filename)
+	{
+		FileHandle descrFile;
+
+		if(!FileIO.FileExists(filename))
+		{
+			descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+
+			if(descrFile)
+			{
+				descrFile.WriteLine("Scene name,FPS,Frame time (ms),Timestamp");
+				
+				descrFile.Close();
+				Print("Headers successfully saved into " + filename);
+			}
+		}
+		
+		descrFile = FileIO.OpenFile(filename, FileMode.APPEND);
+
+		if(descrFile)
+		{
+			descrFile.WriteLine(string.Format("%1,%2,%3,%4",
+				m_waypoint.GetName(),
+				System.GetFPS(),
+				1000.0 * System.GetFrameTimeS(),
+				GetCurrentTimestamp()
+			));
+
+			descrFile.Close();
+			Print("Scene data successfully saved into " + filename);
+		}
+	}
+
+	private string GetCurrentTimestamp()
+	{
+		int year, month, day;
+		System.GetYearMonthDay(year, month, day);
+		return string.Format("%1-%2-%3", year.ToString(4), month.ToString(2), day.ToString(2));
+	}
+
+	private void MakeScreenshotMetafile(string filename)
+	{
+		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+
+		vector position = m_camera.GetOrigin();
+		vector orientation = m_camera.GetYawPitchRoll();
+
+		if(descrFile)
+		{
+			string description = m_waypoint.GetDescription();
+			if (description.Length() > 0)
+				descrFile.WriteLine(string.Format("%1", description));
+			descrFile.WriteLine(string.Format("FPS: %1", System.GetFPS()));
+			descrFile.WriteLine(string.Format("Frame time (ms): %1", 1000.0 * System.GetFrameTimeS()));
+			descrFile.WriteLine(string.Format("Position: [%1, %2, %3]", position[0], position[1], position[2]));
+			descrFile.WriteLine(string.Format("XYZ Rotation: [%1, %2, %3]", orientation[1], orientation[0], orientation[2]));
+			
+			string link = string.Format("enfusion://WorldEditor/%1;%2,%3,%4;%5,%6,%7", g_Game.GetWorldFile(), position[0], position[1], position[2], orientation[1], orientation[0], orientation[2]);
+			float normalizedTime;
+			int year;
+			int month;
+			int day;
+			
+			if (GetTimeAndDate(normalizedTime, year, month, day))
+			{
+				descrFile.WriteLine(string.Format("Time: %1", normalizedTime));
+				descrFile.WriteLine(string.Format("Date: %1/%2/%3", year, month, day));
+				link += string.Format(",%1,%2,%3,%4", normalizedTime, year, month, day);
+			}
+			
+			descrFile.WriteLine(string.Format("<a href=\"%1\">Link to World Editor</a>", link));
+			
+			descrFile.Close();
+			Print("Screenshot metafile successfully saved into " + filename);
+		}
+	}
+
+	private void TransformCameraToWaypoint()
+	{
+		if (m_waypoint && m_camera)
+		{
+			vector mat[4];
+			m_waypoint.GetTransform(mat);
+			m_camera.SetTransform(mat);
+			m_waypoint.EOnEnter();
+			
+			g_Game.BeginPreload(GetWorld(), mat[3], 500);
+		}
+	}
+	
+	protected bool GetTimeAndDate(out float normTime, out int year, out int month, out int day)
+	{
+		BaseWorld world = GetWorld();
+		
+		if(world)
+		{
+			BaseWeatherManagerEntity weatherEntity = BaseWeatherManagerEntity.Cast(WeatherManager.GetRegisteredWeatherManagerEntity(world)); 
+			
+			if(weatherEntity)
+			{
+				normTime = weatherEntity.GetTimeOfTheDay() / 24.0;
+				year = weatherEntity.GetYear();
+				month = weatherEntity.GetMonth();
+				day = weatherEntity.GetDay();
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	bool SetTimeAndDate(float timeOfTheDay24h, int year, int month, int day)
+	{
+		BaseWorld world = GetWorld();
+		
+		
+		if(world)
+		{
+			BaseWeatherManagerEntity weatherEntity = BaseWeatherManagerEntity.Cast(WeatherManager.GetRegisteredWeatherManagerEntity(world)); 
+		
+			if (weatherEntity)
+			{
+				weatherEntity.SetDate(year, month, day, true);
+				weatherEntity.SetTimeOfTheDay(timeOfTheDay24h);
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	bool SetWeatherState(string state)
+	{
+		BaseWorld world = GetWorld();
+		
+		if(world)
+		{
+			BaseWeatherManagerEntity weatherEntity = BaseWeatherManagerEntity.Cast(WeatherManager.GetRegisteredWeatherManagerEntity(world)); 
+		
+			if (weatherEntity)
+			{
+				BaseWeatherStateTransitionManager transManager = weatherEntity.GetTransitionManager();
+				
+				if(transManager)
+				{
+					WeatherStateTransitionNode node = transManager.CreateStateTransition(state, 0.1, 0.1);
+					if(node)
+					{
+						transManager.EnqueueStateTransition(node, false);
+						transManager.RequestStateTransitionImmediately(node);
+					}
+				}
+				
+				return true;
+			}
+		}
+		
+		return false;
+	}
+}
+
+//----------------------------------------------
+
+class Screenshot_Waypoint: GenericEntity
+{
+	[Attribute("", UIWidgets.EditBox, "Waypoint description", "")]
+	private string m_description; //< description of the autotest
+	
+	[Attribute("", UIWidgets.EditBox, "Weather state", "")]
+	private string m_weatherState;
+	
+	[Attribute("-1", UIWidgets.Slider, "Time of the day", "-1 24 0.01")]
+	private float m_timeOfTheDay;
+	
+	[Attribute("-1", UIWidgets.SpinBox, "Year", "")]
+	private int m_year;
+	
+	[Attribute("-1", UIWidgets.SpinBox, "Month", "")]
+	private int m_month;
+	
+	[Attribute("-1", UIWidgets.SpinBox, "Day", "")]
+	private int m_day;
+	
+	
+	 void Screenshot_Waypoint(IEntitySource src, IEntity parent)
+	{
+		if (parent)
+		{
+			SetFlags(EntityFlags.ACTIVE, true);
+
+			vector position;
+			float angleX, angleY, angleZ;
+			vector rotation; // we cannot supply array as a out param, so we need the floats and then assign them to vector
+			src.Get("coords", position);
+			src.Get("angleX", angleX);
+			src.Get("angleY", angleY);
+			src.Get("angleZ", angleZ);
+
+			rotation[1] = angleX;
+			rotation[0] = angleY;
+			rotation[2] = angleZ;
+
+			vector mat[4];
+			Math3D.AnglesToMatrix(rotation, mat);
+
+			mat[3] = position;
+
+			SetTransform(mat); // needs to be done because addchild is counting with the transform of parent which was already applied so we need to set local position and transform
+
+			parent.AddChild(this, -1);
+		}
+	}
+
+	void ~Screenshot_Waypoint()
+	{
+
+	}
+
+	/**
+	\brief This method is called when the waypoint is entered
+	*/
+	event void EOnEnter()
+	{
+		Screenshot_Autotest parent = Screenshot_Autotest.Cast(GetParent());
+		
+		if(parent)
+		{
+			float time = parent.GetDefaultTimeOfTheDay();
+			int year = parent.GetDefaultYear();
+			int month = parent.GetDefaultMonth();
+			int day = parent.GetDefaultDay();
+			string state = parent.GetDefaultWeatherState();
+			
+			if(m_timeOfTheDay >= 0)
+			{
+				time = m_timeOfTheDay;
+			}
+			
+			if(m_year >= 1900 && m_year <= 2100)
+			{
+				year = m_year;
+			}
+			if(m_month >= 1 && m_month <= 12)
+			{
+				month = m_month;
+			}
+			if(m_day >= 1 && m_day <= 31)
+			{
+				day = m_day;
+			}
+			
+			if(m_weatherState.Length() > 0)
+			{
+				state = m_weatherState;
+			}
+			
+			parent.SetTimeAndDate(time, year, month, day);
+			parent.SetWeatherState(state);
+		}
+	}
+
+	event void EOnExit()
+	{
+	}
+
+	string GetDescription()
+	{
+		return m_description;
+	}
+}
+
+/*!
+\}
+*/
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Entities
+\{
+*/
+
+class BaseWeatherManagerEntityClass: GenericEntityClass
+{
+}
+
+class BaseWeatherManagerEntity: GenericEntity
+{
+	proto external ref WeatherState GetCurrentWeatherState();
+
+	/*!
+	Retrieves in-game day duration as realtime seconds.
+	\return Returns the duration of one in-game day as realtime seconds.
+	*/
+	proto external float GetDayDuration();
+	/*!
+	Sets in-game day duration as realtime seconds.
+	Only issuable by the authority.
+	Automatically broadcast to all clients.
+	\param realtimeSeconds Seconds in real time one ingame day will take.
+	\return Returns true when command is issued successfully, false otherwise.
+	*/
+	proto external bool SetDayDuration(float realtimeSeconds);
+	/*!
+	Enables or disabled automatic daytime advancement.
+	Only issuable by the authority.
+	Automatically broadcast to all clients.
+	\param autoAdvanced True to enable, false to disable.
+	\return Returns true when command is issued successfully, false otherwise.
+	*/
+	proto external bool SetIsDayAutoAdvanced(bool autoAdvanced);
+	/*!
+	Retrieves whether automatic time advancement is enabled or not.
+	\return Returns true if daytime is advaned automatically, false otherwise.
+	*/
+	proto external bool GetIsDayAutoAdvanced();
+	/*!
+	Sets longitude as <-180, +180>.
+	Can only be set by the authority (server, singleplayer...)
+	\return Returns true when command is authorized, false otherwise.
+	*/
+	proto external bool SetCurrentLongitude(float longitude);
+	/*!
+	Returns current longitude.
+	*/
+	proto external float GetCurrentLongitude();
+	/*!
+	Returns current latitude.
+	*/
+	proto external float GetCurrentLatitude();
+	/*!
+	Sets latitude as <-90, +90>.
+	Can only be set by the authority (server, singleplayer...)
+	\return Returns true when command is authorized, false otherwise.
+	*/
+	proto external bool SetCurrentLatitude(float latitude);
+	/*!
+	Returns time zone offset (in hours)
+	*/
+	proto external float GetTimeZoneOffset();
+	/*!
+	Sets time zone offset (in hours)
+	in range <-12.0, +14.0>
+	*/
+	proto external bool SetTimeZoneOffset(float utcTimeZone);
+	/*!
+	Gets DST offset (in hours)
+	*/
+	proto external float GetDSTOffset();
+	/*!
+	Sets DST Offset (in hours).
+	Can only be set by authority.
+	*/
+	proto external bool SetDSTOffset(float dstOffsetHours);
+	/*!
+	Retrieves whether DST (daylight savings time) is enabled.
+	*/
+	proto external bool IsDSTEnabled();
+	/*!
+	Sets whether DST (daylight savings time) is enabled or disabled.
+	*/
+	proto external bool SetDSTEnabled(bool enabled);
+	/*!
+	Sets in-game wind speed in meters per second.
+	Only issuable by the authority.
+	Automatically broadcast to all clients.
+	\param windSpeed Wind speed in m/s.
+	\return Returns true when command is issued successfully, false otherwise.
+	*/
+	proto external bool SetWindSpeedOverride(bool doOverride, float windSpeed = 0);
+	/*!
+	Retrieves in-game wind speed in meters per second.
+	\return Returns the in-game wind speed in meters per second.
+	*/
+	proto external float GetWindSpeed();
+	/*!
+	Sets in-game wind direction angle in degrees.
+	Only issuable by the authority.
+	Automatically broadcast to all clients.
+	\param windDirection Wind direction angle in degrees <0, 360.0>
+	\return Returns true when command is issued successfully, false otherwise.
+	*/
+	proto external bool SetWindDirectionOverride(bool doOverride, float windDirection = 0);
+	/*!
+	Retrieves in-game wind direction angle in degrees.
+	\return Returns the in-game wind direction angle in degrees <0, 360.0>
+	*/
+	proto external float GetWindDirection();
+	proto external bool IsWindSpeedOverridden();
+	proto external bool IsWindDirectionOverridden();
+	/*!
+	Sets current rain intensity override (in range <0.0, 1.0>)
+	Can only be set by the authority (server, singleplayer...)
+	\return Returns true when command is authorized, false otherwise.
+	*/
+	proto external bool SetRainIntensityOverride(bool doOverride, float rainIntensity = 0);
+	proto external float GetRainIntensity();
+	proto external bool IsRainIntensityOverridden();
+	/*!
+	Sets current fog override (in range <0.0, 1.0>)
+	Can only be set by the authority (server, singleplayer...)
+	\return Returns true when command is authorized, false otherwise.
+	*/
+	proto external bool SetFogAmountOverride(bool doOverride, float fog = 0);
+	proto external bool SetFogHeightDensityOverride(bool doOverride, float heightDensity = 0);
+	proto external float GetFogAmount();
+	proto external bool IsFogAmountOverridden();
+	proto external float GetFogHeightDensity();
+	proto external bool IsFogHeightDensityOverridden();
+	/*
+	Sets current wetness (in <0,1>)
+	Can only be set by the authority (server, singleplayer...)
+	\return Returns true when command is authorized, false otherwise.
+	*/
+	proto external bool SetCurrentWetness(float wetness);
+	/*
+	Gets current wetness (in <0,1>)
+	*/
+	proto external float GetCurrentWetness();
+	/*
+	Sets current water accumulation(in <0,1>)
+	Can only be set by the authority (server, singleplayer...)
+	\param waterAccumulationCracks water accumulation value in cracks
+	\param waterAccumulationPuddles water accumulation value in puddles
+	\return Returns true when command is authorized, false otherwise.
+	*/
+	proto external bool SetCurrentWaterAccumulation(float waterAccumulationCracks, float waterAccumulationPuddles);
+	/*
+	Gets current water accumulation in cracks (in <0,1>)
+	*/
+	proto external float GetCurrentWaterAccumulationCracks();
+	/*
+	Gets current water accumulation in puddles (in <0,1>)
+	*/
+	proto external float GetCurrentWaterAccumulationPuddles();
+	proto external void AddLightning(WeatherLightning lightning);
+	/*!
+	Get weather state transition manager
+	\return Transition manager, null if client is not master.
+	*/
+	proto ref BaseWeatherStateTransitionManager GetTransitionManager();
+	/*!
+	Gets moon phase for supplied date, geo location is not needed but timezone yes in order to calculate UTC correctly.
+
+	\param year Year.
+	\param month Month in range <1, 12>
+	\param day Day in range <1, 31>
+	\param timeOfTheDay24 Time of the day in 24 hour floating point format.
+	\param timezone TimeZone Offset in hours ranging <-12, +14>
+	\param dstOffset DST (daylight savings time) offset, must be 0.0 or positive value.
+
+	\return phase in <0...1> range. 0 = new moon, 1 = full moon
+	*/
+	proto float GetMoonPhaseForDate(int year, int month, int day, float timeOfTheDay24, float timezone, float dstOffset);
+	/*!
+	Retrieve current sun direction, moon direction and moon phase.
+
+	\param outSunDir Current sun direction
+	\param outMoonDir Current moon direction
+	\param outMoonPhase01 Moon phase (0 = new moon, 1 = full moon)
+	*/
+	proto void GetCurrentSunMoonDirAndPhase(out vector outSunDir, out vector outMoonDir, out float outMoonPhase01);
+	/*!
+	Gets sunrise hour in 24 hour format e.g. 12.50 is 12:30 A.M
+	\return True if there is a valid sunrise with current latitude/longitude/date configuration, false otherwise
+	*/
+	proto bool GetSunriseHour(out float hour24);
+	/*!
+	Gets sunset hour in 24 hour format e.g. 12.50 is 12:30 A.M
+	\return True if there is a valid sunset with current latitude/longitude/date configuration, false otherwise
+	*/
+	proto bool GetSunsetHour(out float hour24);
+	/*!
+	Gets sunrise hour in 24 hour format e.g. 12.50 is 12:30 A.M.
+	For specific date, geolocation, timezone and DST.
+
+	\param year Year.
+	\param month Month in range <1, 12>
+	\param day Day in range <1, 31>
+	\param latitude Latitude in range <-90, 90> where +90 equals north pole, 0 equator and -90.0 south pole
+	\param longitude Longitude in range <-180.0, 180.0> where 0 equals (almost) greenwich meridian.
+	\param timezone TimeZone Offset in hours ranging <-12, +14>
+	\param dstOffset DST (daylight savings time) offset, must be 0.0 or positive value.
+
+	\return True if there is a valid sunrise with current latitude/longitude/date configuration, false otherwise
+	*/
+	proto bool GetSunriseHourForDate(int year, int month, int day, float latitude, float longitude, float timezone, float dstOffset, out float hour24);
+	/*!
+	Gets sunset hour in 24 hour format e.g. 12.50 is 12:30 A.M for specific date.
+	\return True if there is a valid sunset with current latitude/longitude/date configuration, false otherwise
+	*/
+	proto bool GetSunsetHourForDate(int year, int month, int day, float latitude, float longitude, float timezone, float dstOffset, out float hour24);
+	/*!
+	Retrieves the current time of the day.
+	\return Time fraction in hours <0.0, 24.0>
+	Example:
+	@code
+	SetTimeOfTheDay(16.5);
+	float totd = GetTimeOfTheDay();
+	Print(totd);
+
+	>> float totd = 16.5
+	@endcode
+	*/
+	proto external float GetTimeOfTheDay();
+	/*!
+	Sets the current time of the day.
+	Only issuable by the authority.
+	Automatically broadcast to all clients.
+	\param hours Time fraction in hours <0.0, 24.0>
+	\param immediateChange Whether change should be applied immediately, forcing recomputation. This should be true only in case of editor and similar items.
+	\return Returns true when command is issued successfully, false otherwise.
+	Example:
+	@code
+		SetTimeOfTheDay(16.5);
+		int h, m, s;
+		GetHoursMinutesSeconds(h, m, s);
+		Print(h);
+		Print(m);
+		Print(s);
+
+		>> int h = 16
+		>> int m = 30
+		>> int s = 00
+	@endcode
+	*/
+	proto external bool SetTimeOfTheDay(float hours24, bool immediateChange = false);
+	/*!
+	Sets the current time of the day.
+	Only issuable by the authority.
+	Automatically broadcast to all clients.
+	\param hours Hours <0,24>
+	\param minutes Minutes <0,60>
+	\param seconds Seconds <0,60>
+	\param immediateChange Whether change should be applied immediately, forcing recomputation. This should be true only in case of editor and similar items.
+	\return Returns true when command is issued successfully, false otherwise.
+	Example:
+	@code
+		SetHoursMinutesSeconds(16, 30, 00);
+		int h, m, s;
+		GetHoursMinutesSeconds(h, m, s);
+		Print(h);
+		Print(m);
+		Print(s);
+
+		>> int h = 16
+		>> int m = 30
+		>> int s = 00
+	@endcode
+	*/
+	proto external bool SetHoursMinutesSeconds(int hours, int minutes, int seconds, bool immediateChange = false);
+	/*!
+	Returns current in-game year
+	*/
+	proto external int GetYear();
+	/*!
+	Returns current in-game month of the year (Range 1-12)
+	*/
+	proto external int GetMonth();
+	/*!
+	Returns current in-game day of the month (Range 1-31)
+	*/
+	proto external int GetDay();
+	/*!
+	Returns the in-game day
+	*/
+	proto external int GetDayInYear();
+	/*!
+	Sets the current in-game date (year/month/day).
+	Only issuable by the authority.
+	Automatically broadcast to all clients.
+	You may check date validity prior to this call with CheckValidDate method.
+
+	\param year Year
+	\param month Month (in 1-12 range)
+	\param day Day (in 1-31 range)
+	\param immediateChange Whether change should be applied immediately, forcing recomputation. This should be true only in case of editor and similar items.
+	\return Returns true when command is issued successfully and date is VALID, false otherwise.
+	*/
+	proto external bool SetDate(int year, int month, int day, bool immediateChange = false);
+	/*!
+	Retrieves the current date (year/month/day).
+	\return Returns Current date (Year, Month in 1-12 range, Day in 1-31 range)
+	*/
+	proto void GetDate(out int year, out int month, out int day);
+	/*!
+	Retrieves the current time of the day.
+	\return Returns script wrapper for time
+	Example:
+	@code
+	SetTimeOfTheDay(16.5);
+	int h, m, s;
+	GetHoursMinutesSeconds(h, m, s);
+	Print(h);
+	Print(m);
+	Print(s);
+
+	>> int h = 16
+	>> int m = 30
+	>> int s = 00
+	@endcode
+	*/
+	proto void GetHoursMinutesSeconds(out int hours, out int minutes, out int seconds);
+	/*
+	Converts in-game time of the day to hours, minutes and seconds.
+	\param hours24 In-game time as a fraction of day <0.0, 24.0>
+	*/
+	static proto void TimeToHoursMinutesSeconds(float hours24, out int hours, out int minutes, out int seconds);
+	/*
+	Converts hours, minutes and seconds to in-game time of the day.
+	\return Returns time of the day as a fraction of day <0.0, 24.0>
+	*/
+	static proto float HoursMinutesSecondsToTime(int hours, int minutes, int seconds);
+	/*!
+	Returns current in-game week day in range [0-6], starts at Monday=0.
+	\return positive integer 0-6 representing each day of the week, starting at Monday.  -1 if current date is invalid.
+	*/
+	proto external int GetWeekDay();
+	/*!
+	Returns week day in range [0-6], starts at Monday=0, for the supplied date.
+	\return positive integer 0-6 representing each day of the week, starting at Monday.  -1 if supplied date is invalid.
+
+	\param year Year.
+	\param month Month in range <1, 12>
+	\param day Day in range <1, 31>
+	*/
+	proto external int GetWeekDayForDate(int year, int month, int day);
+	/*!
+	Retrieves the current engine time (synchronized between clients),
+	this value is not affected by time multiplier nor automatic time advancement attributes.
+	*/
+	proto external float GetEngineTime();
+	/*!
+	Gets all Weather States.
+	*/
+	proto external void GetWeatherStatesList(out notnull array<ref WeatherState> outStates);
+	/*!
+	Gets moon phase for supplied time of the day.
+	\return phase in <0...1> range. 0 = new moon, 1 = full moon
+	*/
+	proto external float GetMoonPhase(float timeOfTheDay24);
+	/*!
+	Checks if date is valid (checks for leap years and correct day of the month)
+
+	\param year Year
+	\param month Month (in 1-12 range)
+	\param day Day (in 1-31 range)
+	\return Returns true when date is valid, false otherwise.
+	*/
+	proto external bool CheckValidDate(int year, int month, int day);
+	/*!
+	update weather by selected timeSlice
+
+	\param timeSlice					timeslice
+	\param advanceSimulation	advance simulation time by the timeslice value, if false, only weather is updated
+	*/
+	proto external void UpdateWeather(float timeSlice, bool advanceSimulation = true);
+}
+
+/*!
+\}
+*/
+//Generic entities from GameLib (script side of c++ classes)
+
+class WB_UIMenuItem: Managed
+{
+	string m_name;
+	int m_id;
+	bool m_enabled;
+
+	void WB_UIMenuItem(string name, int id = 0, bool enabled = true)
+	{
+		m_name = name;
+		m_id = id;
+		m_enabled = enabled;
+	}
+}
+
+class GenericEntityClass: EntityPrefabData
+{
+	void GenericEntityClass(BaseContainer prefab) {}
+}
+
+/*!
+Indices of SkyMaterial properties
+usage: g_Game.GetWorldEntity().GetSkyMaterial().SetParamByIndex(ESkyMaterialParams.MIE_DENSITY, 10);
+*/
+enum ESkyMaterialParams
+{
+	SKY_INTENSITY_LV, // float; -12 to 20; Intensity of sky in LV or EV if IntensityAbsoluteLV is false
+	GROUND_INTENSITY_LV, // float; -12 to 20; Intensity of ground in LV or EV of IntensityAbsoluteLV is false
+	GROUND_COLOR, // color - float[3]/float[4], Ground color (lower hemisphere of atmosphere
+	IRRADIANCE_INTENSITY, // float; 0.0001 to 1; Intensity of atmosphere's direct irradiance. Lower = ambient/indirect lighting is more prevalent and direct lighting is weaker. Higher = direct lighting is stronger.
+	INSCATTER_START, // float; 0 to 1; Start distance of inscatter (fog) from 0=near to 1=far plane.
+	DISTANCE_FOG_START, // float; 0 to 1
+	DISTANCE_FOG_END, // float; 0 to 1
+	GROUND_DENSITY,	// float; 0 to 1
+	RAYLEIGH, // float; 0.01 to 1; Amount of Rayleigh scattering.
+	RAYLEIGH_SCALE_HEIGHT, // float; 0 to 36000; Height scale of Rayleigh scattering (meters), lower = Rayleigh is 'compressed' to this value. bigger = Rayleigh is 'stretched' to this value.
+	MIE_DENSITY, // float; 0 to 10; Density of Mie scattering (multiplicator).");
+	MIE_SCALE_HEIGHT, // float; 680 to 36000; Height scale of Mie scattering (meters), lower = Mie is 'compressed' to this value. bigger = Mie is 'stretched' to this value.");
+	MIE_ANGSTROM_ALPHA, // float; 0 to 1; Luminosity/Intensity factor of Mie scattering.");
+	MIE_ANGSTROM_BETA, // float; 0 to 1; Amount of Mie scattering. (bigger = foggy, lower = clear)");
+	MIE_PHASE_FUNCTION_G, // float; 0 to 1; Defines the shape (anisotropy) of the Mie scattering. 1.0 = concentrated around the sun, 0.0 = constant through atmosphere.");
+	BACK_SCATTERING, // float; 0 to 1; Amount of mie scattering lit by sun, at the opposite side of sun");
+	BACK_SCATTERING_PHASE, // float; 0 to 1; Phase of the back scattering function, similar to MiePhaseFunctionG");
+	OVERRIDE_VOLFOG, // bool, Fog colors will be overriden by atmosphere");
+	OVERRIDE_VOLFOG_BRIGHTNESS, // float; -20 to 20; Fog intensity");
+	SOLAR_IRRADIANCE_TINT, // color - float[3]/float[4]
+	RAYLEIGH_SCATTERING_TINT, // color - float[3]/float[4]
+	MIE_SCATTERING_TINT // color - float[3]/float[4]
+}
+
+class WorldEntityClass : GenericWorldEntityClass
+{
+}
+
+class WorldEntity : GenericWorldEntity
+{
+}
+
+enum CharacterMovement
+{
+	MOVEMENTTYPE_IDLE,
+	MOVEMENTTYPE_WALK,
+	MOVEMENTTYPE_RUN,
+	MOVEMENTTYPE_SPRINT
+}
+
+enum CharacterStance
+{
+	STANCE_ERECT,
+	STANCE_CROUCH,
+	STANCE_PRONE,
+	STANCE_ERECT_RAISED,
+	STANCE_CROUCH_RAISED,
+	STANCE_PRONE_RAISED
+}
+
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+class ScriptPlatformRequestCallback: PlatformRequestCallback
+{
+	event void OnPrivilegeResult(UserPrivilege privilege, UserPrivilegeResult result) { Print(string.Format("ScriptPlatformRequestCallback::OnPrivilegeResult %1, %2", privilege, result)); };
+
+
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Input
+\{
+*/
+
+sealed class InputManager: ActionManager
+{
+	private void InputManager();
+	private void ~InputManager();
+
+	//! Sets system cursor position
+	proto external void SetCursorPosition(int x, int y);
+	//! Returns true when mouse/keyboard is preferred input method
+	proto external bool IsUsingMouseAndKeyboard();
+	/*!
+	\brief Returns last dominant input device used by user.
+	EInputDeviceType.MOUSE for standard mouse & keyboard combination
+	EInputDeviceType.KEYBOARD for keyboard only (activated when using keyboard navigation in UI)
+	EInputDeviceType.* for other devices
+	*/
+	proto external EInputDeviceType GetLastUsedInputDevice();
+	proto external bool SetLastUsedInputDevice(EInputDeviceType type);
+	//! Tells input manager, that is loading. IM than show hide cursor even without per frame updating
+	proto external void SetLoading(bool isLoading);
+	/*!
+	\brief Start to rumble a gamepad for specific user (if available). Intensty for low/high frequency is in range from 0 to 1
+	*/
+	proto external void SetGamepadRumble(int userIdx, float fLeftMotorSpeed, float fRightMotorSpeed, float fLeftTriggerSpeed, float fRightTriggerSpeed, int iDurationMs = -1, int iFadeInMs = 0, int iFadeOutMs = 0);
+	//! use userIdx = -1 to stop rubmle for all controllers
+	proto external void StopRumble(int userIdx = -1);
+	/*!
+	\brief Set gamepad trigger effect
+	Set gamepad trigger effect. Functionality can vary across platforms.
+
+	\param userIdx user index
+	\param eTriggerIndex can be left or right trigger
+	\param eEffectType can be rumble or force-feedback
+	\param frequency used just with rumble effect
+	\param curve parameter curve, array of 10 integer values. Range is (0, 8) where 0 is minimum, 8 maximum force of effect.
+	*/
+	proto external void SetGamepadTriggerEffect(int userIdx, GamepadTrigger eTriggerIndex, GamepadTriggerEffect eEffectType, int frequency, notnull array<int> curve);
+	/*!
+	\brief Set gamepad light color
+	*/
+	proto external void SetGamepadLightColor(int userIdx, notnull Color color);
+	//! Resets internal state of action
+	proto external void ResetAction(string actionName);
+	//! Resets internal state of all actions in context
+	proto external void ResetContext(string contextName);
+	proto external bool RegisterActionManager(ActionManager pManager);
+	proto external bool UnregisterActionManager(ActionManager pManager);
+	proto external ref InputBinding CreateUserBinding();
+	/*
+	Return config for given key. Config is set in project settings (.gproj file) InputManagerSettings.UiMappings
+	\code
+	BaseContainer container = GetGame().GetInputManager().GetKeyUIMapping("keyboard:KC_G");
+	if (container)
+	{
+		string label;
+		container.Get("Label", label);
+		Print("Key label for UI: " + label);
+	}
+	\endcode
+	*/
+	proto external BaseContainer GetKeyUIMapping(string keyName);
+	/*
+	Return key binding for given action. Key binding is a tree of combos and alternatives. Method returned key binding tree encoded as binary expression tree (https://en.wikipedia.org/wiki/Binary_expression_tree).
+	Process from right to left.
+	Example: for key binding "P or (CTRL + G)" is keyStack looks like {'KC_G', 'KC_CTRL', '+', 'KC_P', '|'}
+
+	\param actionName name of action
+	\param keyStack stack for keys. Can be: '+' for input combo (binary node followed by two child nodes) or '|' for input sum/alternative (binary node followed by two child nodes) otherwise contains key code (leaf node)
+	\param filterStack contains pointer to InputFilter container for key with the same index on keyStack (size of filterStack is always same as keyStack)
+	\param deviceType filter just key binds for specific device. Leave EInputDeviceType.INVALID to return key binding for last used device
+	\param preset filter just key binds for specific preset. Leave empty to any preset
+	\param keyBindIndex filter just key bind with given index. Leave -1 to all key binds
+
+	\code
+	// Iterate trough key bind stack
+	string ProcessKeybindStack(inout int index, notnull array<string> keyStack)
+	{
+		if (index < 0)
+			return string.Empty;
+
+		// pop back
+		string key = keyStack[index];
+		index--;
+
+		switch(key)
+		{
+			case "+": // combo
+				return ProcessKeybindStack(index, keyStack) + " + " + ProcessKeybindStack(index, keyStack);
+
+			case "|": // sum/alternative
+				return ProcessKeybindStack(index, keyStack) + " | " + ProcessKeybindStack(index, keyStack);
+
+			default: // key value
+				return key;
+		}
+
+		return string.Empty;
+	}
+
+	void DoKeybindTest()
+	{
+		array<string> keyStack = {};
+		array<BaseContainer> filterStack ={};
+		if (GetGame().GetInputManager().GetActionKeybinding("ShowGroupMenu", keyStack, filterStack))
+		{
+			int index = keyStack.Count() - 1;
+			Print("Key bind: " + ProcessKeybindStack(index, keyStack))
+		}
+	}
+	\endcode
+	*/
+	proto external bool GetActionKeybinding(string actionName, notnull array<string> keyStack, notnull array<BaseContainer> filterStack, EInputDeviceType deviceType = EInputDeviceType.INVALID, string preset = string.Empty, int keyBindIndex = -1);
+}
+
+/*!
+\}
+*/
+
+/** @file */
+
+
+	//! Backend error
+	enum EBackendError
+	{
+		EBERR_OK,					// all OK
+		EBERR_UNKNOWN,				// unknown error
+		EBERR_DISABLED,				// backend is disabled
+		EBERR_INVALID_STATE,		// called request from state where it is not possible (ie. reading data before logon and such)
+		EBERR_BUSY,					// no request can be called - login/ auth in process
+		EBERR_ALREADY_OFFLINE,		// state is already active
+		EBERR_ALREADY_ONLINE,		// state is already active
+		EBERR_ALREADY_REQUESTED,	// state already requested once!
+		EBERR_LOGIN_FAILED,			// failed to logon
+		EBERR_AUTH_FAILED,			// failed to authenticate
+		EBERR_LOGIN_SUCCESS,		// logon successfull
+		EBERR_AUTH_SUCCESS,			// authenticate successfull
+		EBERR_CONFIGURATION_GET,	// configuration received
+		EBERR_CONFIGURATION_WRITE,	// configuration written
+		EBERR_CHARACTER_GET,		// character data receieved
+		EBERR_CHARACTER_UPDATE,		// character update done
+		EBERR_FILE_NOT_FOUND,		// save point doesn't exist
+		EBERR_UNSUPPORTED_REQUEST,	// non-supported request call performed
+		EBERR_STORAGE_IS_FULL, 		// unable to store data
+		EBERR_VALIDATION_FAILED		// downloaded asset is invalid
+	}
+	
+
+	//! Backend request
+	enum EBackendRequest
+	{
+		EBREQ_GAME_Test,
+		EBREQ_GAME_CharacterGet,
+//		#if BACKENDAPI_DEV_CHARACTER
+		EBREQ_GAME_DevCharacterGet,
+		EBREQ_GAME_DevCharacterUpdate,
+//		#endif
+
+		EBREQ_GAME_CharacterUpdateS2S,
+	
+			// client lobby
+		EBREQ_LOBBY_RoomsJoin,
+		EBREQ_LOBBY_RoomsSearch,
+		EBREQ_LOBBY_TargetSearch,
+		EBREQ_LOBBY_RoomsGetByIds,
+		EBREQ_LOBBY_RoomsGetByHostIds,
+		EBREQ_LOBBY_AddFavoriteServer,
+		EBREQ_LOBBY_RemoveFavoriteServer,
+		EBREQ_LOBBY_ClientRoomsRegister,
+		EBREQ_LOBBY_RoomsHeartBeat,
+		EBREQ_LOBBY_RoomListUpdate,
+		EBREQ_LOBBY_UpdateRooms,
+		EBREQ_LOBBY_GetPingSites,
+		EBREQ_LOBBY_GetInviteRoom,
+		EBREQ_LOBBY_CreateServerOwnerToken,
+		EBREQ_LOBBY_VerifyPassword,
+		// server config
+		EBREQ_LOBBY_SaveServerConfig,
+		EBREQ_LOBBY_DownloadServerConfig,
+		EBREQ_LOBBY_ListServerConfig,
+		EBREQ_LOBBY_DeleteServerConfig,
+
+		// workshop
+		EBREQ_WORKSHOP_GetAssetList,
+		EBREQ_WORKSHOP_CheckAssets,
+		EBREQ_WORKSHOP_GetOwnAssetRating,
+		EBREQ_WORKSHOP_PutAssetRating,
+		EBREQ_WORKSHOP_DeleteAssetRating,
+		EBREQ_WORKSHOP_GetDownloadURL,
+		EBREQ_WORKSHOP_PostSubscriptions,
+		EBREQ_WORKSHOP_DeleteSubscriptions,
+		EBREQ_WORKSHOP_GetAsset,
+		EBREQ_WORKSHOP_ReportAsset,
+		EBREQ_WORKSHOP_DeleteAssetReport,
+		EBREQ_WORKSHOP_GetOwnAssetReport,
+		EBREQ_WORKSHOP_PostFavourite,
+		EBREQ_WORKSHOP_DeleteFavourite,
+		EBREQ_WORKSHOP_GetDependencyTree,
+		EBREQ_WORKSHOP_GetAssetScenarios,
+		EBREQ_WORKSHOP_GetDownloadList,
+		EBREQ_WORKSHOP_GetDownloadListS2S,
+	
+		EBREQ_WORKSHOP_AddProfileBlock,
+		EBREQ_WORKSHOP_RemoveProfileBlock,
+
+		EBREQ_WORKSHOP_UploadAsset,
+		EBREQ_WORKSHOP_StatusAsset,
+		EBREQ_WORKSHOP_PatchAsset,
+		EBREQ_WORKSHOP_DeleteAsset,
+		
+		EBREQ_WORKSHOP_DownloadAsset,
+		EBREQ_WORKSHOP_DownloadImage,
+		EBREQ_WORKSHOP_ValidateAsset,
+	
+		EBREQ_WORKSHOP_DownloadFragment,
+		EBREQ_WORKSHOP_DirectDownloadFile
+	}
+	
+	//! Credential parameters
+	enum EBackendCredentials
+	{
+		EBCRED_NAME,
+		EBCRED_PWD,
+		EBCRED_BASEURI,
+		EBCRED_PLATFORMUID,
+		EBCRED_2FA_TOKEN
+	}
+
+	//! State of Dedicated Server box in cloud (regarding Backend connectivity)
+	enum EDsBoxState
+	{
+		EDSSTATUS_VOID,						// not initiated yet, not requested
+		EDSSTATUS_REQUESTED,				// request send to cloud, awaiting answer
+		EDSSTATUS_REQFAILED,				// request failed
+		EDSSTATUS_REQSUCCESS,				// request successful - server active
+		EDSSTATUS_AWAITING,					// box awaiting configuration
+		EDSSTATUS_CONFIGURE,				// configuration send to cloud, awaiting answer
+		EDSSTATUS_CFGFAILED,				// cfg request failed
+		EDSSTATUS_CFGSUCCESS,				// cfg request successful - box configured
+		EDSSTATUS_LAUNCHING,				// box launching chose scenario (initializing new or loading from save)
+		EDSSTATUS_LAUNCHED,					// box launched (game may start)
+		EDSSTATUS_GAME,						// box processing game
+		EDSSTATUS_IDLE,						// box is in idle mode (this is state where it saves resources - idling without players)
+		EDSSTATUS_ERROR,					// box encountered error during game/ idle mode
+		EDSSTATUS_RECOVERY,					// box attempting to recovery
+		EDSSTATUS_RESTARTING,				// box is restarting
+		EDSSTATUS_BCKFAILED,				// backup request failed
+		EDSSTATUS_BCKSUCCESS,				// backup request successful - box stored
+		EDSSTATUS_SHUTDOWN,					// box is terminating
+	}
+
+	//! Session state (game hosted on Dedicated Server)
+	enum EDsSessionState
+	{
+		EDSESSION_OFFLINE,					// session is not initialized
+		EDSESSION_LAUNCHING,				// session is handling online services, connections and loading initial data
+		EDSESSION_INIT,						// session is waiting for script/ game to finish initialization (load world) and such
+		EDSESSION_ACTIVE,					// session is running - players can connect
+		EDSESSION_CLOSING,					// session is being terminated
+		EDSESSION_PAUSED,					// session is paused (this is state where server was hibernated)
+		EDSESSION_RESTARTING,				// session is being restarted
+	}
+
+enum EWorkshopItemType
+{
+	EWTYPE_UNKNOWN,
+	EWTYPE_ADDON,
+	EWTYPE_WORLD_SAVE
+}
+
+// -------------------------------------------------------------------------
+// Dedicated Server Box data record
+class DSBox
+{
+	/**
+	\brief Name of the the hosted instance
+	*/
+	proto native string Name();
+
+	/**
+	\brief Status of the hosted instance (EDsBoxState)
+	*/
+	proto native int Status();
+	/**
+	\brief Request pending upon hosted instance (EDsBoxState)
+	only following are possible EDSSTATUS_REQUESTED/ EDSSTATUS_CONFIGURE/ EDSSTATUS_BACKUP/ EDSSTATUS_SHUTDOWN
+	if EDSSTATUS_VOID, no request pending ATM
+	*/
+	proto native int Request();
+
+	/**
+	\brief Player limit on the instance
+	*/
+	proto native int PlayerLimit();
+	/**
+	\brief Player count on the instance
+	*/
+	proto native int PlayerCount();
+
+	/**
+	\brief Request server to be hosted
+	*/
+	proto native void Launch();
+	/**
+	\brief Request server to be terminated
+	*/
+	proto native void Shutdown();
+
+}
+
+
+// -------------------------------------------------------------------------
+// Callback interface for DS Session - must exist for the duration of request!
+class DSSessionCallback : Managed
+{
+
+	/**
+	\brief Session connect event
+	*/
+	void OnConnect()
+	{
+	}
+
+	/**
+	\brief Session disconnect event
+	*/
+	void OnDisconnect()
+	{
+	}
+
+	/**
+	\brief Save event handling
+	*/
+	void OnSaving( string fileName )
+	{
+	}
+
+	/**
+	\brief Load event handling
+	*/
+	void OnLoaded( string fileName )
+	{
+	}
+
+	/**
+	\brief Setup event handling
+	*/
+	void OnSetup( string fileName )
+	{
+	}
+
+	/**
+	\brief Event when timed player saving is about to happen
+	\param iPlayerId - Id of Player which will be saved
+	*/
+	void OnPlayerSaveEvent( int iPlayerId )
+	{
+	}
+
+	/**
+	\brief Load Fail event handling
+	*/
+	void OnLoadFailed( string fileName )
+	{
+	}
+
+	/**
+	\brief Save Fail event handling
+	*/
+	void OnSaveFailed( string fileName )
+	{
+	}
+	/**
+	\brief Save Success event handling
+	*/
+	void OnSaveSuccess( string fileName )
+	{
+	}
+
+	/**
+	\brief Delete Fail event handling
+	*/
+	void OnDeleteFailed( string fileName )
+	{
+	}
+	/**
+	\brief Delete Success event handling
+	*/
+	void OnDeleteSuccess( string fileName )
+	{
+	}
+
+	/**
+	\brief Initialize event - here specify what you want to load before game starts
+	*/
+	void OnInitialize()
+	{
+	}
+
+	/**
+	\brief Initializing new session
+	*/
+	void OnNew()
+	{
+	}
+
+	/**
+	\brief Ready event handling - point where session goes to game
+	*/
+	void OnReady()
+	{
+	}
+
+}
+// -------------------------------------------------------------------------
+class RCONCommander: Managed
+{	
+	void ProcessCommand(string sCommand, int iRequestId)
+	{
+		Print("RCONCommander.ProcessCommand not implemented!");		
+	}
+}
+
+// -------------------------------------------------------------------------
+// Save & Load handler
+class SessionStorage
+{
+	/**
+	\brief Return true if storage is initialized - ready to load/ store data
+	*/
+	proto native bool Initialized();
+	/**
+	\brief Clear all scheduled operations
+	*/
+	proto native void ClearScheduler();
+	/**
+	\brief Request scheduler On/ Off without being removed from queue
+	\param fileName - name of file handle
+	\param bEnable - if should run or not (Note: by default it run so you typically pause it first)
+	*/
+	proto native void EnableScheduler( string fileName, bool bEnable );
+	/**
+	\brief Request player save
+	\param iPlayerId Is Player Id used on player identity
+	*/
+	proto native void RequestPlayerSave( int iPlayerId );
+	/**
+	\brief Request periodical processing save of session content
+	\param fileName - name of file handle
+	\param sec - time in seconds
+	*/
+	proto native void RequestScheduledSave( string fileName, float sec );
+	/**
+	\brief Request server to process save of session content (can be invoked from script or game)
+	\param fileName - name of file handle
+	*/
+	proto native void RequestSave( string fileName );
+	/**
+	\brief Request server to process load of session content (can be invoked from script or game)
+	\param fileName - name of file handle
+	*/
+	proto native void RequestLoad( string fileName );
+	/**
+	\brief Request local save of session content (can be invoked from script or game)
+	\param fileName - name of file handle
+	*/
+	proto native void LocalSave( string fileName );
+	/**
+	\brief Request local load of session content (can be invoked from script or game)
+	\param fileName - name of file handle
+	*/
+	proto native void LocalLoad( string fileName );
+	/**
+	\brief Request local delete of session content (can be invoked from script or game)
+	\param fileName - name of file handle
+	*/
+	proto native void LocalDelete( string fileName );
+	/**
+	\brief Check if file/ handle with thist name exist - local if you're local - online if you're online
+	\param fileName - name of file handle
+	*/
+	proto native bool CheckFileID( string fileName );
+	/**
+	\brief Assign callback for handling Save & Load events for specific file handle under session
+	\param fileName - name of file handle
+	\param sessionCallback - name of file handle
+	*/
+	proto native void AssignFileIDCallback( string fileName, DSSessionCallback sessionCallback );
+
+	/**
+	\brief Process session load - You call this method from OnLoad() event of callback.	
+	\param pDataObject Represents "master" object as targer for incoming data
+	*/
+	proto native void ProcessLoad( JsonApiStruct pDataObject, string fileName );
+	/**
+	\brief Process session save - You call this method from OnSave() event of callback.	
+	\param pDataObject Represents "master" object as source of outcoming data
+	*/
+	proto native void ProcessSave( JsonApiStruct pDataObject, string fileName );
+	/**
+	\brief Check if online storage privileges are granted (if not - all is stored locally with session)
+	*/
+	proto native bool GetOnlineWritePrivilege();
+	
+	/**
+	\brief Get a list of all save files that are ready to load
+	*/
+	proto native int AvailableSaves(out notnull array<string> aSaves);
+}
+
+
+// -------------------------------------------------------------------------
+// Server Session
+class DSSession
+{
+	/**
+	\brief Name of the the session
+	*/
+	proto native string Name();
+
+	/**
+	\brief Status of the hosted instance (EDsSessionState)
+	*/
+	proto native int Status();
+
+	/**
+	\brief Player limit on the instance
+	*/
+	proto native int PlayerLimit();
+	/**
+	\brief Player count on the instance
+	*/
+	proto native int PlayerCount();
+
+	/**
+	\brief Request termination of server
+	*/
+	proto native void RequestShutdown();
+	/**
+	\brief Request server to enter active state
+	*/
+	proto native void RequestActive();
+	/**
+	\brief Request finishing of hosted session (game won, draw, canceled)
+	*/
+	proto native void RequestFinish();
+	/**
+	\brief Request restart of hosted session (with or without new parameters)
+	*/
+	proto native void RequestRestart();
+
+	/**
+	\brief Get current session uptime in seconds
+	*/
+	proto native float GetUpTime();
+
+	/**
+	\brief ID of Room created on server
+	*/
+	proto native string RoomID();
+	/**
+	\brief ID of Scenario hosted on server
+	*/
+	proto native string ScenarioID();
+}
+
+
+// -------------------------------------------------------------------------
+// Callback interface for backend - must exist for the duration of request!
+class BackendCallback : Managed
+{
+	/**
+	\brief Request finished with error result
+	\param code Error code is type of EBackendError
+	*/
+	void OnError( int code, int restCode, int apiCode )
+	{
+//		Print("[BackendCallback] OnError: "+ g_Game.GetBackendApi().GetErrorCode(code));
+	}
+
+	/**
+	\brief Request finished with success result
+	\param code Code is type of EBackendRequest
+	*/
+	void OnSuccess( int code )
+	{
+//		Print("[BackendCallback] OnSuccess()");
+	}
+
+	/**
+	\brief Request not finished due to timeout
+	*/
+	void OnTimeout()
+	{
+//		Print("[BackendCallback] OnTimeout");
+	}
+
+}
+
+
+// -------------------------------------------------------------------------
+// debug api
+class SavePoint : JsonApiStruct
+{
+	string msg = "You don't know the power of the Dark side!";
+	
+	void SavePoint()
+	{
+		RegV("msg");
+	}
+
+	void Reset()
+	{
+		msg = "garbage";
+	}
+
+	void OnLoad()
+	{
+		Print("SavePoint::OnLoad()");
+		Print(msg);
+	}
+
+}
+
+
+class SaveTestCallback : DSSessionCallback
+{
+	BackendApi api;
+	protected ref SavePoint savePoint = new SavePoint();
+
+	override void OnInitialize()
+	{
+		api.GetStorage().RequestLoad("campaign");
+	}
+
+	override void OnSaving( string fileName )
+	{
+		api.GetStorage().ProcessSave(savePoint, fileName);
+	}
+	
+	override void OnLoaded( string fileName )
+	{
+		savePoint.Reset(); // reset is here for proof of concept
+		api.GetStorage().ProcessLoad(savePoint, fileName);
+		savePoint.OnLoad(); // print recieved message
+	}
+	
+	override void OnSaveSuccess( string fileName )
+	{
+		Print("Success");
+	}
+}
+
+
+// -------------------------------------------------------------------------
+// Service Status Item
+class ServiceStatusItem
+{
+	/**
+	\brief Name of service
+	*/
+	proto native string Name();
+	/**
+	\brief Status of service
+	*/
+	proto native string Status();
+	/**
+	\brief Message realted to service
+	*/
+	proto native string Message();
+
+}
+
+
+// -------------------------------------------------------------------------
+// News Feed Item
+class NewsFeedItem
+{
+	/**
+	\brief Title of news
+	*/
+	proto native string Title();
+	/**
+	\brief Text of news
+	*/
+	proto native string Excerpt();
+	/**
+	\brief News website URL fragment
+	*/
+	proto native string Slug();
+	/**
+	\brief Category type
+	*/
+	proto native string Category();
+	/**
+	\brief Full website URL
+	*/
+	proto native string URL();
+	/**
+	\brief Date & Time
+	*/
+	proto native string Date();
+	/**
+	\brief Path to downloaded image
+	*/
+	proto native string Path();
+
+}
+
+
+// -------------------------------------------------------------------------
+// Backend API access
+class BackendApi
+{
+
+	void BackendApi()
+	{
+	}
+
+	void ~BackendApi()
+	{
+	}
+
+
+	/**
+	\brief Set session callback to recieve all session related events
+	\param callback - check all events and respective description upon object
+	*/
+	proto native void SetSessionCallback(DSSessionCallback callback);
+	
+	/**
+	\brief Get Workshop Api
+	*/
+	proto native WorkshopApi GetWorkshop();
+
+	/**
+	\brief Get Lobby Api
+	*/
+	proto native ClientLobbyApi GetClientLobby();
+
+	/**
+	\brief Get active count of server instances
+	*/
+	proto native int GetDSBoxcount();
+	/**
+	\brief Get DS box instance
+	*/
+	proto native DSBox GetDSBox( int iIndex );
+
+	/**
+	\brief Get Session Storage
+	*/
+	proto native SessionStorage GetStorage();
+
+	/**
+	\brief Get DS server instance
+	*/
+	proto native DSSession GetDSSession();
+
+	/**
+	\brief Return count of services
+	*/
+	proto native int GetStatusCount();
+	/**
+	\brief Return specific status object
+	*/
+	proto native ServiceStatusItem GetStatusItem( int iIndex );
+	/**
+	\brief Return Main status object
+	*/
+	proto native ServiceStatusItem GetMainStatus();
+
+	/**
+	\brief Return count of News messages
+	*/
+	proto native int GetNewsCount();
+	/**
+	\brief Return specific News message
+	*/
+	proto native NewsFeedItem GetNewsItem( int iIndex );
+	/**
+	\brief Return count of Notification messages
+	*/
+	proto native int GetNotifyCount();
+	/**
+	\brief Return specific Notification message
+	*/
+	proto native NewsFeedItem GetNotifyItem( int iIndex );
+	/**
+	\brief Return specific Link by it's name
+	*/
+	proto native string GetLinkItem( string linkName );
+
+
+	/**
+	\brief Shutdown backend - request processing
+	*/
+	proto native bool Shutdown();
+
+
+	/**
+	\brief Client is Authenticated - relate requests may procceed
+	*/
+	proto native bool IsAuthenticated();
+	/**
+	\brief Client is busy - Authentication in process
+	*/
+	proto native bool IsAuthInProgress();
+	/**
+	\brief True if HTTP communication enabled (initialization, runtime or shutdown may be pending at same time)
+	*/
+	proto native bool IsRunning();
+	/**
+	\brief True if HTTP communication is being activated (initializing yet)
+	*/
+	proto native bool IsInitializing();
+	/**
+	\brief True if HTTP communication active (initialized)
+	*/
+	proto native bool IsActive();
+	/**
+	\brief Refresh status - ping services to obtain response time
+	*/
+	proto native void RefreshCommStatus();
+	/**
+	\brief Get comm test status, 0==not executed, 1==running, 2==finished, 3==failed
+	*/
+	proto native int GetCommTestStatus();
+	/**
+	\brief Read service response time in milliseconds, call RefreshCommStatus() to update results
+	*/
+	proto native float GetCommResponseTime();
+	/**
+	\brief Get time in seconds since last successful request (limit is 1hr - does not count more)
+	*/
+	proto native float GetCommTimeLastSuccess();
+	/**
+	\brief Get time in seconds since last successful request (limit is 1hr - does not count more)
+	*/
+	proto native float GetCommTimeLastFail();
+	/**
+	\brief Unlink the bi-account and clear credentials
+	*/
+	proto native void Unlink(BackendCallback callback);
+
+	
+	//! Error code to string
+	string GetErrorCode( int code )
+	{
+		string result;
+	
+		if( code == EBackendError.EBERR_OK )
+			result = "OK";
+		else if( code == EBackendError.EBERR_UNKNOWN )
+			result = "Offline";
+		else if( code == EBackendError.EBERR_DISABLED )
+			result = "Communication Disabled";
+		else if( code == EBackendError.EBERR_INVALID_STATE )
+			result = "Cannot be called from current state";
+		else if( code == EBackendError.EBERR_BUSY )
+			result = "Busy processing requests";
+		else if( code == EBackendError.EBERR_ALREADY_OFFLINE )
+			result = "Already disconnected";
+		else if( code == EBackendError.EBERR_ALREADY_ONLINE )
+			result = "Already connected";
+		else if( code == EBackendError.EBERR_LOGIN_FAILED )
+			result = "Failed to logon";
+		else if( code == EBackendError.EBERR_AUTH_FAILED )
+			result = "Failed to Authenticate";
+		else
+			result = "*";
+			
+		return result;
+	}
+
+	/**
+	\brief Called when platform ready and provided all data necessary to connect online
+	*/
+	void OnPlatformActive( int code )
+	{
+		//Print("!!! [Backend] Platform Active");
+	}
+
+	/**
+	\brief Called when platform is not ready - perhaps user is not signed-in
+	*/
+	void OnPlatformMissing( int code )
+	{
+		//Print("!!! [Backend] Platform Missing");
+	}
+
+	/**
+	\brief Called when initiate cannot be called
+	*/
+	void OnCannotInitiate( int code )
+	{
+		//Print("!!! [Backend] Cannot Initiate: "+ GetErrorCode(code));
+	}
+	
+	/**
+	\brief Called when shutdown cannot be proceeded
+	*/
+	void OnCannotShutdown( int code )
+	{
+		//Print("!!! [Backend] Cannot Shutdown: "+ GetErrorCode(code));
+	}
+
+	/**
+	\brief Called when authentication failed
+	*/
+	void OnCannotAuth( int code )
+	{
+		//Print("!!! [Backend] Cannot Authenticate: "+ GetErrorCode(code));
+	}
+
+	/**
+	\brief Called when step was successfully proceeded
+	*/
+	void OnSuccess( string step )
+	{
+		//Print( "[Backend] Successfully Solicited: " + step );
+	}
+	
+	/**
+	\brief Called when step failed
+	*/
+	void OnFail( string step )
+	{
+		//Print( "[Backend] Failed to Proceed: " + step );
+	}
+
+	[Obsolete("Use GetPlayerIdentityId() instead.")]
+	string GetPlayerUID( int iPlayerId ) { return GetPlayerIdentityId(iPlayerId); }
+
+	/**
+	\brief Get Player Identity ID by Player ID
+	\param iPlayerId Is id of player in session
+	*/
+	proto native string GetPlayerIdentityId(int iPlayerId);
+
+	/**
+	\brief Get Local Identity ID on client
+	*/
+	proto native string GetLocalIdentityId();
+
+	/*!
+	\brief Get Player Platform Kind by Player ID
+	\param iPlayerId Is id of player in session
+	*/
+	proto native PlatformKind GetPlayerPlatformKind(int iPlayerId);
+
+	/*!
+	\brief Get Player Platform ID by Player ID
+	\param iPlayerId Is id of player in session
+	\note Xbox and PS Ids are hashed in SHA-256
+	*/
+	proto native string GetPlayerPlatformId(int iPlayerId);
+
+	/**
+	\brief Return true if local platform data are to be used for authentication/ persistency of client (meaningless on server)
+	*/
+	proto native bool IsLocalPlatformAssigned();
+
+	/**
+	\brief Ask specific request with callback result
+	\param request Is type of request, which is EBackendRequest
+	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	*/
+	proto native void Request( int request, BackendCallback cb, JsonApiStruct dataObject );
+
+	/**
+	\brief Ask player request with callback result from controller (Lobby)
+	\param request Is type of request, which is EBackendRequest
+	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	\param iPlayerId Is Player Id used on player identity
+	*/
+	proto native void PlayerRequest( int request, BackendCallback cb, JsonApiStruct dataObject, int iPlayerId );
+
+	/**
+	\brief Expand player data upon defined structure, this is Server-Side only!
+	\note Data are available only after player was successfully accepted into Room/ Lobby on server
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	\param iPlayerId Is Player Id used on player identity
+	*/
+	proto native void PlayerData( JsonApiStruct dataObject, int iPlayerId );
+
+	/**
+	\brief Expand settings data upon defined structure, this is Server-Side only!
+	\note Data are available only after game was successfully executed and connected to online services
+	\param sFileName Is name of settings file you want to access, remember - it must exist!
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	*/
+	proto native void SettingsData( string sFileName, JsonApiStruct dataObject );
+
+	/**
+	\brief Send feedback message and/ or script object with whatever data on it (additionally it is possible to handle callback as well)
+	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	\param message Is custom
+	*/
+	proto native void FeedbackMessage( BackendCallback cb, JsonApiStruct dataObject, string message );
+
+	/**
+	\brief Send feedback image and/ or script object with whatever data on it (additionally it is possible to handle callback as well)
+	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	\param fileName Is path to image you want to send
+	*/
+	proto native void FeedbackImage( BackendCallback cb, JsonApiStruct dataObject, string fileName );
+	
+	/**
+	\brief Set credentials value per item
+	\param item Is type of EBackendCredentials parameter you want to set
+	\param str Is value itself
+	*/
+	proto native void SetCredentialsItem( EBackendCredentials item, string str );
+
+	/**
+	\brief Get credentials value per item
+	\param item Is type of EBackendCredentials parameter you want to read
+	*/
+	proto native string GetCredentialsItem( EBackendCredentials item );
+
+	/**
+	\brief Invoke credentials update (authenticate with new name+password)
+	*/
+	proto native void VerifyCredentials(BackendCallback callback, bool storeCredentials);
+	
+	/**
+	\brief The bi-account remains locked for X seconds
+	*/
+	proto native int RemainingAccountLockedTime();
+	
+	/**
+	\brief Return true if BI Account is linked to local Identity
+	*/
+	proto native bool IsBIAccountLinked();
+	
+	/**
+	\brief Get target backend environment
+	*/
+	proto native owned string GetBackendEnv();
+	
+	
+	proto native bool GetRunningDSConfig(DSConfig config);
+	proto native bool LoadDSConfig(DSConfig config, string fileName);
+	proto native bool SaveDSConfig(DSConfig config, string fileName);
+	proto native void SetDefaultIpPort(DSConfig config);
+	proto native int GetAvailableConfigs(out notnull array<string> configs);
+	proto native int GetAvailableConfigPaths(out notnull array<string> configs);
+	proto native ServerConfigApi GetServerConfigApi();
+
+	//! Get Ban Service API
+	proto native BanServiceApi GetBanServiceApi();
+	
+	/**
+	\brief Check if player is in list of admins defined in server config
+	\param iPlayerId is Id of Player which is being verified
+	*/
+	proto native bool IsListedServerAdmin( int iPlayerId );
+
+	/**
+	\brief Check if player is server owner defined by ownerToken
+	\param iPlayerId is Id of Player which is being verified
+	*/
+	proto native bool IsServerOwner( int iPlayerId );
+	
+	/**
+	\brief Called when new server or client game session is started
+	*/
+	proto native void NewSession();
+	
+	/**
+	\brief Debugging API for internal builds
+	*/
+	proto native void SetDebugHandling(EBackendRequest eRequest, EBackendDebugHandling eHandlingType);
+}	
+
+enum EBackendDebugHandling
+{
+	EBDH_NONE,
+	EBDH_ERROR,
+	EBDH_TIMEOUT
+}
+
+// -------------------------------------------------------------------------
+
+/** @file */
+
+
+// -------------------------------------------------------------------------
+// states, (result + error) codes
+// defined in C++
+enum ERestResult
+{
+	EREST_EMPTY,				// not initialized
+	EREST_PENDING,				// awaiting processing
+	EREST_FEEDING,				// awaiting incoming data
+	EREST_SUCCESS,				// result and/ or data are ready (success), awaiting data processing to be finished (no longer blocking queue processing)
+	EREST_PROCESSED,			// finished (either successfully or with failure) and eill be removed ASAP
+
+	EREST_ERROR,				// (state >= EREST_ERROR) == error happened
+	EREST_ERROR_CLIENTERROR,	//  (EREST_ERROR == EREST_ERROR_CLIENTERROR)
+	EREST_ERROR_SERVERERROR,
+	EREST_ERROR_APPERROR,
+	EREST_ERROR_TIMEOUT,
+	EREST_ERROR_NOTIMPLEMENTED,
+	EREST_ERROR_STORE,
+	EREST_ERROR_UNKNOWN,
+}
+

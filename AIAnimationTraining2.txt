@@ -1,0 +1,3167 @@
+
+
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Weapon
+\{
+*/
+
+class WeaponAnimationComponentClass: BaseItemAnimationComponentClass
+{
+}
+
+class WeaponAnimationComponent: BaseItemAnimationComponent
+{
+	proto external bool GetBipod();
+	proto external bool HasBipod();
+	proto external void SetBipod(bool open, bool fastForwardAnimations = false);
+	proto external void FoldWeapon(bool fastForwardAnimations = false);
+	proto external void UnfoldWeapon(bool fastForwardAnimations = false);
+	proto external bool IsFolded();
+}
+
+/*!
+\}
+*/
+
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Entities
+\{
+*/
+
+class IEntity: Managed
+{
+	/*!
+	Event when touched by other entity.
+	\note You need to have TouchComponent in entity to receive this event.
+
+	\param owner The owner entity
+	\param other Entity who touched us
+	\param touchTypesMask Bitmask of touch types TODO
+	*/
+	event protected void EOnTouch(IEntity owner, IEntity other, int touchTypesMask);
+	/*!
+	Event after entity is allocated and initialized.
+	\param owner The owner entity
+	*/
+	event protected void EOnInit(IEntity owner);
+	/*!
+	Event when we are visible.
+	\param owner The owner entity
+	\param frameNumber Frame number
+	*/
+	event protected void EOnVisible(IEntity owner, int frameNumber);
+	/*!
+	Event every frame.
+	\param owner The owner entity
+	\param timeSlice Time passed since last frame
+	*/
+	event protected void EOnFrame(IEntity owner, float timeSlice);
+	/*!
+	Event after physics update.
+	\param owner The owner entity
+	\param timeSlice Time passed since last frame
+	*/
+	event protected void EOnPostFrame(IEntity owner, float timeSlice);
+	/*!
+	Event from animation system.
+	\param owner The owner entity
+	\param type
+	\param slot
+	*/
+	event protected void EOnAnimEvent(IEntity owner, int type, int slot);
+	/*!
+	Event before every physics fixed step (can be multiple calls per engine update)
+	\param owner The owner entity
+	\param timeSlice Time slice of physics fixed step
+	*/
+	event protected void EOnSimulate(IEntity owner, float timeSlice);
+	/*!
+	Event after every physics fixed step (can be multiple calls per engine update)
+	\param owner The owner entity
+	\param timeSlice Time slice of physics fixed step
+	*/
+	event protected void EOnPostSimulate(IEntity owner, float timeSlice);
+	/*!
+	Event when joint attached to RigidBody of this entity is broken.
+	\param owner The owner entity
+	\param other Other Entity attached to the joint
+	*/
+	event protected void EOnJointBreak(IEntity owner, IEntity other);
+	/*!
+	Event when physics engine has moved with this Entity.
+	\param owner The owner entity
+	*/
+	event protected void EOnPhysicsMove(IEntity owner);
+	/*!
+	Event when physics engine registered contact with other RigidBody.
+	\param owner The owner entity
+	\param other Other Entity who contacted us
+	\param contact Structure describing the contact
+	*/
+	event protected void EOnContact(IEntity owner, IEntity other, Contact contact);
+	/*!
+	Event when a RigidBody active state is changed between consecutive fixed steps
+	\param owner The owner entity
+	*/
+	event protected void EOnPhysicsActive(IEntity owner, bool activeState);
+	/*!
+	Event every fixed frame.
+	\param owner The owner entity
+	\param timeSlice Fixed time step
+	*/
+	event protected void EOnFixedFrame(IEntity owner, float timeSlice);
+	/*!
+	Event after physics update every fixed frame.
+	\param owner The owner entity
+	\param timeSlice Fixed time step
+	*/
+	event protected void EOnFixedPostFrame(IEntity owner, float timeSlice);
+	//! EntityEvent.EV_USER+0
+	protected void EOnUser0(IEntity other, int extra);
+	//! EntityEvent.EV_USER+1
+	protected void EOnUser1(IEntity other, int extra);
+	//! EntityEvent.EV_USER+2
+	protected void EOnUser2(IEntity other, int extra);
+	//! EntityEvent.EV_USER+3
+	protected void EOnUser3(IEntity other, int extra);
+	//! EntityEvent.EV_USER+4
+	protected void EOnUser4(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy018(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy019(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy020(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy021(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy022(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy023(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy024(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy025(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy026(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy027(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy028(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy029(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy030(IEntity other, int extra);
+	//! Placeholder
+	private void EOnDummy031(IEntity other, int extra);
+	//-----------------------------------------------------------------------
+	//! protected script Constructor
+	protected void IEntity(IEntitySource src, IEntity parent);
+
+	/*!
+	Return unique entity ID.
+	\code
+		ItemBase apple = g_Game.CreateObject( "FruitApple", String2Vector("0 10 0"), false );
+		Print( apple.GetID() );
+
+		>> 0
+	\endcode
+	*/
+	proto external EntityID GetID();
+	/*!
+	Returns parent of this entity (entity on upper level
+	of hierarchy).
+	\return
+	Pointer to parent entity, or nullptr, when we are not child.
+	*/
+	proto external IEntity GetParent();
+	/*!
+	Returns top-parent of this entity.
+	\return
+	Pointer to root entity, or self, when we are not child.
+	*/
+	proto external IEntity GetRootParent();
+	/*!
+	Returns first child from this level of hierarchy
+	if there is any.
+	\return
+	Pointer to child entity, or nullptr
+	*/
+	proto external IEntity GetChildren();
+	/*!
+	Returns next sibling of this entity (next entity on this level
+	of hierarchy).
+	\return
+	Pointer to sibling entity, or nullptr
+	*/
+	proto external IEntity GetSibling();
+	//! Returns visual object set to this Entity. No reference is added.
+	proto external VObject GetVObject();
+	proto external EntityPrefabData GetPrefabData();
+	proto external EntityComponentPrefabData FindComponentData(typename typeName);
+	proto external BaseWorld GetWorld();
+	//! Set fixed LOD. Use -1 for non-fixed LOD.
+	proto external void SetFixedLOD(int lod);
+	/*!
+	Returns world transformation of Entity. It returns only as many vectors as is array length.
+	\code
+		Man player = g_Game.GetPlayer();
+
+		vector mat[4];
+		player.GetTransform(mat);
+		Print( mat );
+
+		>> <0.989879,-0,0.141916>,<0,1,0>,<-0.141916,0,0.989879>,<2545.08,15.6754,2867.49>
+	\endcode
+	\param mat `vector[1...4]` matrix to be get
+	*/
+	proto external void GetTransform(out vector mat[]);
+	//! See IEntity#GetTransform
+	proto external void GetWorldTransform(out vector mat[]);
+	//! See IEntity#GetTransform
+	proto external void GetLocalTransform(out vector mat[]);
+	/*!
+	Transforms local vector to parent(world) space.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.VectorToParent("1 2 3") );
+
+		>> <2.89791,2,1.26575>
+	\endcode
+	\param vec local space vector to transform
+	\return parent space vector
+	*/
+	proto external vector VectorToParent(vector vec);
+	/*!
+	Transforms local position to parent(world) space.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.CoordToParent("1 2 3") );
+
+		>> <2549,17.6478,2857>
+	\endcode
+	\param coord local position to transform
+	\return position in parent space
+	*/
+	proto external vector CoordToParent(vector coord);
+	/*!
+	Transforms world space vector to local space.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.VectorToLocal("2 1 5") );
+
+		>> <-0.166849,1,5.38258>
+	\endcode
+	\param vec world space vector to transform
+	\return local space vector
+	*/
+	proto external vector VectorToLocal(vector vec);
+	/*!
+	Transforms world space position to local space.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.CoordToLocal("500 10 155") );
+
+		>> <15254,-54.2004,8745.53>
+	\endcode
+	\param coord world space position to transform
+	\return position in local space
+	*/
+	proto external vector CoordToLocal(vector coord);
+	/*!
+	Returns orientation of Entity in world space (Yaw, Pitch, Roll).
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetYawPitchRoll() );
+
+		>> <180,-76.5987,180>
+	\endcode
+	\return entity orientation
+	*/
+	proto external vector GetYawPitchRoll();
+	/*!
+	Sets angles for entity (Yaw, Pitch, Roll).
+	\code
+		Man player = g_Game.GetPlayer();
+		player.SetYawPitchRoll("180 50 180" );
+		Print( player.GetYawPitchRoll() );
+
+		>> <-180,50,-180>
+	\endcode
+	\param angles angles to be set
+	*/
+	proto external void SetYawPitchRoll(vector angles);
+	//! See IEntity#GetTransformAxis
+	proto external vector GetWorldTransformAxis(int axis);
+	//! See IEntity#GetTransformAxis
+	proto external vector GetTransformAxis(int axis);
+	//! See IEntity#GetTransformAxis
+	proto external vector GetLocalTransformAxis(int axis);
+	//! See IEntity#SetTransform. Returns `false`, if there is no change in transformation.
+	proto external bool SetLocalTransform(vector mat[4]);
+	//! See IEntity#SetTransform. Returns `false`, if there is no change in transformation.
+	proto external bool SetWorldTransform(vector mat[4]);
+	//! Returns pivot ID from hierarchy component.
+	proto external TNodeId GetPivot();
+	/*!
+	Sets entity world transformation.
+	\code
+		vector mat[4];
+		Math3D.MatrixIdentity( mat )
+
+		Man player = g_Game.GetPlayer();
+		player.SetTransform( mat );
+
+		vector outmat[4];
+		player.GetTransform(outmat );
+		Print( outmat );
+
+		>> <1,0,0>,<0,1,0>,<0,0,1>,<0,0,0>
+	\endcode
+	\param mat matrix to be set
+	*/
+	proto external bool SetTransform(vector mat[4]);
+	//! Same as GetLocalYawPitchRoll(), but returns rotation vector around X, Y and Z axis.
+	proto external vector GetLocalAngles();
+	/*!
+	Returns local orientation when it's in hierarchy (Yaw, Pitch, Roll).
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetLocalYawPitchRoll() );
+
+		>> <180,-57.2585,180>
+	\endcode
+	\return local orientation
+	*/
+	proto external vector GetLocalYawPitchRoll();
+	//! Same as GetYawPitchRoll(), but returns rotation vector around X, Y and Z axis.
+	proto external vector GetAngles();
+	//! Same as SetYawPitchRoll(), but sets rotation around X, Y and Z axis.
+	proto external void SetAngles(vector angles);
+	/*!
+	Returns origin of Entity.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetOrigin() );
+
+		>> <2577.02,15.6837,2924.27>
+	\endcode
+	\return entity origin
+	*/
+	proto external vector GetOrigin();
+	/*!
+	Sets origin for entity.
+	\code
+		Man player = g_Game.GetPlayer();
+		player.SetOrigin("2550 10 2900" );
+		Print( player.GetOrigin() );
+
+		>> <2550,10,2900>
+	\endcode
+	\param orig origin to be set
+	*/
+	proto external void SetOrigin(vector orig);
+	proto external void SetScale(float scale);
+	proto external float GetScale();
+	/*!
+	Returns local bounding box of model on Entity.
+	\code
+		Man player = g_Game.GetPlayer();
+
+		vector mins, maxs;
+		player.GetBounds(mins, maxs );
+
+		Print( mins );
+		Print( maxs );
+
+		>> <0,0,0>
+		>> <0,0,0>
+	\endcode
+	\param[out] mins minimum point of bounding box
+	\param[out] maxs maximum point of bounding box
+	*/
+	proto external void GetBounds(out vector mins, out vector maxs);
+	/*!
+	Returns quantized world-bound-box of Entity.
+	\code
+		Man player = g_Game.GetPlayer();
+
+		vector mins, maxs;
+		player.GetWorldBounds( mins, maxs );
+
+		Print( mins );
+		Print( maxs );
+
+		>> <2547.2,15.5478,2852.85>
+		>> <2548.8,17.5478,2855.05>
+	\endcode
+	\param[out] mins minimum point of bounding box
+	\param[out] maxs maximum point of bounding box
+	*/
+	proto external void GetWorldBounds(out vector mins, out vector maxs);
+	//! Dynamic event invocation. Parameters are the same as in `IEntity::EOnXXXX()` methods.
+	proto external volatile void SendEvent(notnull IEntity actor, EntityEvent e, void extra);
+	proto external string GetName();
+	//! Sets component flags.
+	proto external int SetVComponentFlags(VCFlags flags);
+	/*!
+	Sets the visual object to this entity. Reference is added and released
+	upon entity destruction.
+	\param object Handle to object got by GetObject().
+	\param options String, dependent on object type. The only one supported for
+	XOB objects:
+	```"$remap 'original material name' 'new material'; [$remap 'another original material name' 'another new material']"```
+	*/
+	proto external void SetObject(VObject object, string options);
+	/*!
+	Sets Entity flags. It's OR operation, not rewrite. Returns previous flags.
+	\code
+		Man player = g_Game.GetPlayer();
+		player.SetFlags(EntityFlags.VISIBLE|EntityFlags.TRACEABLE );
+		Print( player.GetFlags() );
+
+		>> 1610612747
+	\endcode
+	\param flags Flags to be set
+	\param recursively Flags will be recursively applied to children of hierarchy too
+	\return previous flags
+	*/
+	proto external EntityFlags SetFlags(EntityFlags flags, bool recursively = false);
+	/*!
+	Clear Entity flags. Returns cleared flags.
+	\code
+		Man player = g_Game.GetPlayer();
+		player.ClearFlags(EntityFlags.VISIBLE|EntityFlags.TRACEABLE );
+		Print( player.GetFlags() );
+
+		>> 1610612744
+	\endcode
+	\param flags Flags to be set
+	\param recursively Flags will be recursively applied to children of hierarchy too
+	\return cleared flags
+	*/
+	proto external EntityFlags ClearFlags(EntityFlags flags, bool recursively = false);
+	/*!
+	Returns Entity flags.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetFlags() );
+
+		>> 1610612745
+	\endcode
+	\return Entity flags
+	*/
+	proto external EntityFlags GetFlags();
+	/*!
+	Sets event mask.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetEventMask() );
+		player.SetEventMask( EntityEvent.VISIBLE );
+		Print( player.GetEventMask() );
+
+		>> 0
+		>> 128
+	\endcode
+	\param e Combined mask of one or more members of EntityEvent enum
+	*/
+	proto external EntityEvent SetEventMask(EntityEvent e );
+	/*!
+	Clears event mask.
+	\code
+		Man player = g_Game.GetPlayer();
+		player.SetEventMask(EntityEvent.VISIBLE );
+		Print( player.GetEventMask() );
+		player.ClearEventMask(EntityEvent.ALL );
+		Print( player.GetEventMask() );
+
+		>> 128
+		>> 0
+	\endcode
+	\param e event mask
+	\return event mask
+	*/
+	proto external EntityEvent ClearEventMask(EntityEvent e);
+	/*!
+	Returns current event mask.
+	\code
+		Man player = g_Game.GetPlayer();
+		Print( player.GetEventMask() );
+
+		>> 0
+	\endcode
+	\return current event mask
+	*/
+	proto external EntityEvent GetEventMask();
+	//! \returns `true` when entity is loaded from map, `false` when dynamically spawned.
+	proto external bool IsLoaded();
+	//! \returns `true` if entity is ready to be deleted.
+	proto external bool IsRemoved();
+	//! \returns `true` if entity was deleted (entity pointer valid until the end of the frame).
+	proto external bool IsDeleted();
+	/*!
+	Updates entity state/position. Should be called when you want to manually commit position changes etc
+	before trace methods etc. Entity is updated automatically at the end and the beginning of simulation step,
+	when it has EntityFlags.TFL_ACTIVE flag set.
+	\returns Mask with flags:
+	- EntityFlags.UPDATE - hierarchy has been updated
+	- EntityFlags.UPDATE_MDL - model hierarchy has been updated
+	*/
+	proto external int Update();
+	//! Add Entity to hierarchy. Pivot is pivot index, or -1 for center of parent.
+	proto external int AddChild(notnull IEntity child, TNodeId pivot, EAddChildFlags flags = EAddChildFlags.AUTO_TRANSFORM);
+	//! Remove Entity from hierarchy.
+	proto external void RemoveChild(notnull IEntity child, bool keepTransform = false);
+	proto external void SetName(string name);
+	//! Sets visibility mask for cameras, where Entity will be rendered.
+	proto external int SetCameraMask(int mask);
+	proto external Physics GetPhysics();
+	proto external Particles GetParticles();
+	proto external Animation GetAnimation();
+	//! Updates animation (either xob, or particle, whatever).
+	proto external int Animate(float speed, int loop);
+	//! Updates animation (either xob, or particle, whatever).
+	proto external int AnimateEx(float speed, int loop, out vector lin, out vector ang);
+	[Obsolete("Use GetAnimation().SetBone() instead")]
+	proto external void	SetBone(TNodeId bone, vector angles, vector trans, float scale);
+	[Obsolete("Use GetAnimation().SetBoneMatrix() instead")]
+	proto external bool	SetBoneMatrix(TNodeId bone, vector mat[4]);
+	[Obsolete("Use GetAnimation().GetBoneMatrix() instead")]
+	proto external bool	GetBoneMatrix(TNodeId bone, out vector mat[4]);
+	[Obsolete("Use GetAnimation().GetBoneIndex() instead")]
+	proto external TNodeId	GetBoneIndex(string boneName);
+	[Obsolete("Use GetAnimation().GetBoneNames() instead")]
+	proto external void	GetBoneNames(out notnull array<string> boneNames);
+	[Obsolete("Use GetAnimation().GetBoneLocalMatrix() instead")]
+	proto external bool	GetBoneLocalMatrix(TNodeId bone, out vector mat[4]);
+	/*!
+	Finds first occurance of the coresponding component.
+	\param typeName type of the component
+	*/
+	proto external Managed FindComponent(typename typeName);
+	/*!
+	Finds all occurances of the coresponding component.
+	\param typeName type of the component
+	\param outComponents array to fill with selected components
+	*/
+	proto external int FindComponents(typename typeName, notnull array<Managed> outComponents);
+}
+
+/*!
+\}
+*/
+// *************************************************************************************
+// ! CharacterCameraADS - Aim down sights camera
+// *************************************************************************************
+class CharacterCameraADS extends CharacterCameraBase
+{
+	//------------------------------------------------------------------------------------------------
+	static const float 	CONST_UD_MIN	= -89.0;		//!< down limit
+	static const float 	CONST_UD_MAX	= 89.0;			//!< up limit
+
+	static const float 	CONST_LR_MIN	= -160.0;		//!< left limit
+	static const float 	CONST_LR_MAX	= 160.0;		//!< right limit
+
+	static const float CONST_TRANSLATIONZ_MIN = -0.1; //! how far back can camera move with weapon
+
+	#ifdef ENABLE_DIAG
+	private static bool s_bDebugRegistered;
+	#endif
+	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param pCameraHandler
+	void CharacterCameraADS(CameraHandlerComponent pCameraHandler)
+	{
+		m_iHandBoneIndex = m_OwnerCharacter.GetAnimation().GetBoneIndex("righthandprop");
+		m_fADSToFPSDeg = 45;
+		m_fFreelookFOV = GetBaseFOV();
+
+		m_WeaponManager = BaseWeaponManagerComponent.Cast(m_OwnerCharacter.FindComponent(BaseWeaponManagerComponent));
+		m_AimingComponent = CharacterAimingComponent.Cast(m_OwnerCharacter.FindComponent(CharacterAimingComponent));
+		m_OffsetLS = "0.0 0.03 -0.07";
+
+		#ifdef ENABLE_DIAG
+		if (!s_bDebugRegistered) {
+			DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_CHARACTER_ADS_CAMERA, "", "ADS Camera", "Character", "0, 3, 0, 1");
+			s_bDebugRegistered = true;
+		}
+		#endif
+
+		m_iJumpAnimTagId = GameAnimationUtils.RegisterAnimationTag("TagFall");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnDeactivate(ScriptedCameraItem pNextCamera)
+	{
+		OnBlendingOut(1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnBlendIn()
+	{
+		if (m_CameraHandler.IsCameraBlending())
+			return;
+
+		OnBlendingIn(1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnBlendOut()
+	{
+		if (m_CameraHandler.IsCameraBlending())
+			return;
+
+		OnBlendingOut(0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float GetSightsADSActivationPercentage() // percentage of blend <0,1>
+	{
+		if (m_LastWeaponComponent)
+		{
+			// Moved into BaseSightsComponent
+			// TODO@HF Find out how much overhead switching between C++/Script has
+			// Might want to check for ScriptedSightsComponent and use XXScript instead for performance
+			BaseSightsComponent optics = m_LastWeaponComponent.GetSights();
+			if (optics)
+				return optics.GetADSActivationPercentage();
+		}
+
+		return 1.0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float GetSightsADSDeactivationPercentage() // percentage of blend <0,1>
+	{
+		if (m_LastWeaponComponent)
+		{
+			// Moved into BaseSightsComponent
+			// TODO@HF Find out how much overhead switching between C++/Script has
+			// Might want to check for ScriptedSightsComponent and use XXScript instead for performance
+			BaseSightsComponent optics = m_LastWeaponComponent.GetSights();
+			if (optics)
+				return optics.GetADSDeactivationPercentage();
+		}
+
+		return 0.0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnBlendingIn(float blendAlpha)
+	{
+		// The weapon may change at any moment
+		BaseWeaponComponent currentWeapon = m_WeaponManager.GetCurrentWeapon();
+		if (m_LastWeaponComponent && currentWeapon != m_LastWeaponComponent && m_LastWeaponComponent.IsSightADSActive())
+			m_LastWeaponComponent.SightADSDeactivated();
+
+		m_LastWeaponComponent = currentWeapon;
+
+		if (blendAlpha < GetSightsADSActivationPercentage())
+			return;
+
+		if (currentWeapon && !currentWeapon.IsSightADSActive())
+			currentWeapon.SightADSActivated();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnBlendingOut(float blendAlpha)
+	{
+		// The weapon may change at any moment
+		BaseWeaponComponent currentWeapon = m_WeaponManager.GetCurrentWeapon();
+		if (m_LastWeaponComponent && currentWeapon != m_LastWeaponComponent && m_LastWeaponComponent.IsSightADSActive())
+			m_LastWeaponComponent.SightADSDeactivated();
+
+		m_LastWeaponComponent = currentWeapon;
+
+		if (blendAlpha < GetSightsADSDeactivationPercentage())
+			return;
+
+		if (currentWeapon && currentWeapon.IsSightADSActive())
+			currentWeapon.SightADSDeactivated();
+
+		CameraManager cameraMgr = GetGame().GetCameraManager();
+		if (cameraMgr)
+			cameraMgr.SetOverlayCamera(null);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
+	{
+		super.OnActivate(pPrevCamera, pPrevCameraResult);
+		if (pPrevCamera)
+		{
+			vector f = pPrevCamera.GetBaseAngles();
+			m_fUpDownAngle = m_ControllerComponent.GetInputContext().GetAimingAngles()[1];
+			m_fLeftRightAngle	= f[1];
+		}
+
+		m_fStabilizerAlpha = 0.0;
+		m_fStabilizerAlphaVel = 0.0;
+		m_lastStablePos = "0 0 0";
+		
+		// Reset entirety of sight blending data
+		m_LastSightsComponent = null;
+		m_bLastSightsBlend = false;
+		m_fLastSightsBlendTime = 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SolveCameraHeadAttach(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult)
+	{
+		//! In some cases this compensation is needed (sloped surfaces)
+		float parentPitch = m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+		cameraData.m_vLookAngles[1] = Math.Clamp(cameraData.m_vLookAngles[1] + parentPitch, CONST_UD_MIN, CONST_UD_MAX);
+
+		vector headMatrix[4];
+		m_OwnerCharacter.GetAnimation().GetBoneMatrix(GetCameraBoneIndex(), headMatrix);
+
+		//! Sights transform relative to the head
+		vector sightsRelativeMatrix[4];
+		Math3D.MatrixInvMultiply4(headMatrix, cameraData.m_mSightsLocalMat, sightsRelativeMatrix);
+
+		//! Fetch desired portion of recoil
+		float recoilPortion;
+		if (m_AimingComponent)
+			recoilPortion = Math.Clamp(m_AimingComponent.GetRawAimingTranslation()[2] * cameraData.m_fCamRecoilAmount, -CAMERA_RECOIL_LIMIT, CAMERA_RECOIL_LIMIT);
+
+		//! Local head plane offset by the recoil portion
+		vector headPlane = cameraData.m_vSightsOffset;
+		headPlane[2] = headPlane[2] - recoilPortion;
+
+		//! Set matrix rotation
+		Math3D.AnglesToMatrix(cameraData.m_vLookAngles, pOutResult.m_CameraTM);
+
+		//! Project sights onto head plane
+		vector resultPosition = SCR_Math3D.IntersectPlane(sightsRelativeMatrix[3], -sightsRelativeMatrix[2], headPlane, vector.Forward);
+
+		//! Apply props
+		pOutResult.m_CameraTM[3] = resultPosition;
+		pOutResult.m_fFOV = cameraData.m_fFOV;
+		pOutResult.m_fDistance = 0;
+		pOutResult.m_fNearPlane = 0.0125;
+		pOutResult.m_bAllowInterpolation = true;
+		pOutResult.m_bUpdateWhenBlendOut = true;
+		pOutResult.m_iDirectBone = GetCameraBoneIndex();
+		pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativePosition;
+	}
+
+	/*!
+		Stable ADS camera solver that used RightHandProp as camera root.
+	*/
+	protected void SolveNewMethod(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult, float pDt, bool allowInterpolation)
+	{
+		Animation anim = m_OwnerCharacter.GetAnimation();
+		
+		// Right hand prop is where weapon is attached to
+		vector propBoneMS[4];
+		anim.GetBoneMatrix(m_iHandBoneIndex, propBoneMS);
+		
+		bool bUseProneADSMethod = IsProneADS();
+		EMuzzleType muzzleType = EMuzzleType.MT_BaseMuzzle;
+		
+		// UPDATE:
+		// This is quite silly considering what is done afterwards,
+		// but the point is that we have to fight with zeroing, as it is
+		// the only relevant aim modifier that we do not want to offset in
+		// the camera like we do with recoil or sway
+		BaseWeaponComponent currentWeapon = m_WeaponManager.GetCurrent();
+		if (currentWeapon)
+		{
+			muzzleType = currentWeapon.GetCurrentMuzzle().GetMuzzleType();
+			if (muzzleType == EMuzzleType.MT_UGLMuzzle || m_LastMuzzleType == EMuzzleType.MT_UGLMuzzle) // HACK: UGL isn't aligned in prone stance without this.
+				bUseProneADSMethod = false;
+			
+			vector zeroingLS[4];
+			if (m_WeaponManager.GetCurrentWeapon().GetCurrentSightsZeroingTransform(zeroingLS))
+			{
+				Math3D.MatrixMultiply4(cameraData.m_mSightsLocalMat, zeroingLS, cameraData.m_mSightsLocalMat);
+				
+				if (bUseProneADSMethod)
+				{
+					// Align camera vertically
+					vector charMat[4];
+					m_OwnerCharacter.GetLocalTransform(charMat);
+					vector camUpMS = vector.Up.InvMultiply3(charMat);
+					cameraData.m_mSightsLocalMat[0] = camUpMS * cameraData.m_mSightsLocalMat[2];
+					cameraData.m_mSightsLocalMat[1] = cameraData.m_mSightsLocalMat[2] * cameraData.m_mSightsLocalMat[0];
+				}
+			}
+		}
+
+		// Get sights relative to right hand prop bone
+		vector sightsMS[4];
+		Math3D.MatrixInvMultiply4(propBoneMS, cameraData.m_mSightsLocalMat, sightsMS);
+		
+		
+		float targetFOV = cameraData.m_fFOV;
+		
+		// Sights interpolation
+		{
+			// On sights change store stable last transform
+			BaseSightsComponent currentSights = m_WeaponManager.GetCurrentSights();			
+			
+			// Just initialize to something in such case.
+			if (!m_LastSightsComponent && currentSights)
+			{
+				Math3D.MatrixCopy(sightsMS, m_vLastSightMS);
+				Math3D.MatrixCopy(sightsMS, m_vLastSightStMS);
+				// And in such cases, we have no reasonable source, so just
+				// disable all the blending
+				m_LastSightsComponent = currentSights;
+				m_bLastSightsBlend = false;
+				m_fLastSightsBlendTime = 0;
+				m_LastMuzzleType = muzzleType;
+			}
+			else if (m_LastSightsComponent != currentSights) // Use last stored transform if possible
+			{
+				Math3D.MatrixCopy(m_vLastSightMS, m_vLastSightStMS);
+				m_fLastSightStFOV = m_fLastSightFOV;
+				m_LastSightsComponent = currentSights;
+				m_bLastSightsBlend = true;
+				m_fLastSightsBlendTime = 0;
+			}
+			
+			// Now during the blend, calculate alpha and apply some
+			// arbitrary blend dark magic 
+			if (m_bLastSightsBlend)
+			{
+				// No interpolation in such cases
+				if (m_fLastSightsBlendDuration < 0)
+				{
+					m_fLastSightsBlendTime = 0;
+					m_bLastSightsBlend = false;
+				}
+				else
+				{
+					float alpha = m_fLastSightsBlendTime / m_fLastSightsBlendDuration;
+					// Terminate the blend, resetting the value.
+					if (alpha >= 1.0)
+					{
+						m_fLastSightsBlendTime = 0;
+						m_bLastSightsBlend = false;
+						m_LastMuzzleType = muzzleType;
+					}
+					else
+					{
+						vector interpBuffer[4]; // result transformation matrix
+						
+						// Last->target rotation blend
+						// quaternion used for that nice quaternion interpolation that's not achievable with vectors
+						float qb[4], qt[4];
+						Math3D.MatrixToQuat(m_vLastSightStMS, qb); // start rotation+buffer
+						Math3D.MatrixToQuat(sightsMS, qt); // target rotation
+						Math3D.QuatLerp(qb, qb, qt, alpha);
+						Math3D.QuatToMatrix(qb, interpBuffer);
+						
+						// Last->target position linear blend
+						interpBuffer[3] = vector.Lerp(m_vLastSightStMS[3], sightsMS[3], alpha);
+						
+						// Apply the transformation
+						Math3D.MatrixCopy(interpBuffer, sightsMS);
+						targetFOV = Math.Lerp(m_fLastSightStFOV, cameraData.m_fFOV, alpha);
+						
+						// Update time
+						m_fLastSightsBlendTime += pDt;
+					}
+				}
+			}
+		}
+		
+		// Store last transform (unstable)
+		Math3D.MatrixCopy(sightsMS, m_vLastSightMS);
+		// And last field of view
+		m_fLastSightFOV = targetFOV;
+
+		// Get sights to character MS
+		Math3D.MatrixMultiply4(propBoneMS, sightsMS, sightsMS);
+
+		// We have sights in right hand prop hand character MS..
+		vector cameraBoneMS[4];
+		anim.GetBoneMatrix(GetCameraBoneIndex(), cameraBoneMS);
+		
+		// If last stable position is uninitialized, there are few cases
+		// where the interpolation will start at the character origin, creating
+		// a very visually unpleasing jump/stutter. Using head bone transformation
+		// should be at least somewhat relevant and should reduce this issue significantly.
+		if (m_lastStablePos == vector.Zero)
+		{
+			m_lastStablePos = cameraBoneMS[3];
+		}
+
+		// Now let us project the position onto the head in MS
+		// rayOrigin:
+		//	sights --> sights back (towards head)
+		// planeOrigin:
+		// head --> forward ( head.z )
+
+		vector pureSightsFwd = sightsMS[2];
+
+		vector projectedPosMS = SCR_Math3D.IntersectPlane(sightsMS[3], -sightsMS[2], cameraBoneMS[3], cameraBoneMS[2]);
+		vector projToSightMS = projectedPosMS - sightsMS[3];
+		vector projToSightsDirMS = projToSightMS.Normalized();
+
+		// Let's negate translation from modifiers - this will keep our camera
+		// where it ought to be, but allow weapon to move independently of camera
+		vector aimingTranslationWeaponLS = m_AimingComponent.GetRawAimingTranslation();
+		//float zOffset = Math.Clamp(aimingTranslationWeaponLS[2], -CAMERA_RECOIL_LIMIT, CAMERA_RECOIL_LIMIT)
+
+		vector aimingTranslationMS;
+		for (int i = 0; i < 3; i++)
+			aimingTranslationMS += aimingTranslationWeaponLS[i] * sightsMS[i];
+
+
+		// And add additional translation, this time desired amount of Z translation
+		//! Fetch desired portion of recoil
+		float recoilPortion;
+		if (m_AimingComponent)
+			recoilPortion = Math.Clamp(aimingTranslationWeaponLS[2] * cameraData.m_fCamRecoilAmount, -CAMERA_RECOIL_LIMIT, CAMERA_RECOIL_LIMIT);
+		vector extraTranslation = recoilPortion * sightsMS[2];
+
+		// And add that to our result
+		sightsMS[3] = sightsMS[3] - aimingTranslationMS - extraTranslation;
+		
+		vector aimingAnglesMS;
+		float fUseHeading = 1.0;
+		float fPositionModelSpace = 0.0;
+		
+		if (bUseProneADSMethod)
+		{
+			aimingAnglesMS = Math3D.MatrixToAngles(sightsMS);			
+			fUseHeading = 0.0;
+			fPositionModelSpace = 1.0;
+			pOutResult.m_bInterpolateOrientation = false;
+		}
+		else
+		{
+			// Now we will disregard any previous rotation... (LOL and use aiming or freelook angles directly)
+
+			// Take look angles directly and correct those for character pitch
+			aimingAnglesMS = cameraData.m_vLookAngles;
+			aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+	
+			// Use as intended
+			Math3D.AnglesToMatrix(aimingAnglesMS, sightsMS);
+		}
+
+		const float alphaEpsilon = 0.0005;
+		// Stabilize camera in certain cases
+		vector resultPosition = sightsMS[3];
+		bool isUnstable = false;
+		if (m_CmdHandler)
+		{
+			isUnstable = m_ControllerComponent.IsSprinting() ||
+						m_CmdHandler.GetTargetLadder() != null ||
+						m_ControllerComponent.IsMeleeAttack() ||
+						m_CmdHandler.GetCommandModifier_ItemChange() && m_CmdHandler.GetCommandModifier_ItemChange().IsChangingItemTag() ||
+						m_CmdHandler.IsProneStanceTransition() && m_ControllerComponent.GetMovementVelocity().LengthSq() > 0.0 ||
+						(!m_WeaponManager || !m_WeaponManager.GetCurrentSights());
+		}
+		
+		CharacterAnimationComponent animComponent = m_ControllerComponent.GetAnimationComponent();
+
+		// Jump context is reset, so instead check for animation tag presence
+		// and make camera unstable during this period as hand movement is unpredictable
+		if (m_iJumpAnimTagId != -1)
+		{
+			if (animComponent && animComponent.IsPrimaryTag(m_iJumpAnimTagId))
+				isUnstable = true;
+		}
+	
+		// In transitions out of ADS override stable position and use that instead,
+		// this will prevent some quirks as we expect weapon pose in ADS to be quite
+		// straight forward, which might not be the case during transitions
+		if (sm_TagADSTransitionOut != -1)
+		{
+			if (animComponent)
+			{
+				// In transitions use camera transform directly
+				if (animComponent.IsPrimaryTag(sm_TagADSTransitionOut))
+				{
+					// Unless both tags are active, at which case we just try to somehow stabilize
+					// the result, otherwise we would get jitter again
+					if (sm_TagADSTransitionIn != -1 && animComponent.IsPrimaryTag(sm_TagADSTransitionIn))
+						anim.GetBoneMatrix(sm_iCameraBoneIndex, cameraBoneMS);
+					
+					m_lastStablePos = cameraBoneMS[3];
+					isUnstable = true;
+				}
+			}
+		}
+
+
+		if (isUnstable)
+		{
+			m_fStabilizerAlpha = Math.SmoothCD(m_fStabilizerAlpha, 1.0, m_fStabilizerAlphaVel, 0.1, 1000, pDt);
+			resultPosition = m_lastStablePos;
+		}
+		else
+		{
+			m_fStabilizerAlpha = Math.SmoothCD(m_fStabilizerAlpha, 0.0, m_fStabilizerAlphaVel, 0.1, 1000, pDt);
+		}
+
+		bool shouldStabilize = m_fStabilizerAlpha > alphaEpsilon;
+		if (shouldStabilize)
+		{
+			resultPosition = vector.Lerp(resultPosition, cameraBoneMS[3], m_fStabilizerAlpha);
+		}
+
+		// Last but not least, blend FOV based on aiming vs. freelook angles
+		// If in freelook or not fully blended out yet, update
+		if (cameraData.m_bFreeLook || m_fFreelookBlendAlpha > alphaEpsilon)
+		{
+			vector weaponAimingDir = m_AimingComponent.GetAimingRotation().AnglesToVector();
+			vector lookAimingDir = aimingAnglesMS.AnglesToVector();
+			float blendAlpha = 1.0 - (vector.Dot(weaponAimingDir, lookAimingDir) + 1.0) * 0.5;
+			const float blendOutSpeed = 3.0; // Higher values reduce the radius range of blend alpha, lower values extend further
+
+			if (cameraData.m_bFreeLook)
+				m_fFreelookBlendAlpha = Math.Clamp(Math.Sqrt(blendAlpha * blendOutSpeed), 0.0, 1.0);
+			else m_fFreelookBlendAlpha -= pDt * 5.0; // if out of freelook, make sure to blend out, in certain cases the epsilon can never be logically hit
+
+			if (m_fFreelookBlendAlpha <= alphaEpsilon)
+				m_fFreelookBlendAlpha = 0.0;
+			
+			vector mat[4];
+			vector offset = m_OffsetLS;
+			vector additiveRotation = "0 0 0";
+			m_CharacterHeadAimingComponent.GetLookTransformationLS(GetCameraBoneIndex(), EDirectBoneMode.RelativePosition, offset, additiveRotation, mat);
+			Math3D.MatrixMultiply4(cameraBoneMS, mat, mat);
+			vector goal = mat[3] + "0 0.035 -0.045"; // arbitrary offset to reduce the vnh/p (visible neck hole per pixel)
+			resultPosition = vector.Lerp(resultPosition, goal, m_fFreelookBlendAlpha);
+		}
+
+		// If the result position is behind the camera bone, the camera might collide with the chest, so we move it forward. (NO LONGER USED)
+		/*float resultNegativeZ = resultPosition[2] - cameraBoneMS[3][2];
+		if (resultNegativeZ < 0)
+		{
+			sightsMS[3] = resultPosition + (-resultNegativeZ * pureSightsFwd[2] * pureSightsFwd);
+		}
+		else
+		{
+			sightsMS[3] = resultPosition;
+		}*/
+		
+		sightsMS[3] = resultPosition;
+
+		// Get transformation to parent
+		if (!shouldStabilize)
+		{
+			Math3D.MatrixInvMultiply4(propBoneMS, sightsMS, pOutResult.m_CameraTM);
+			pOutResult.m_iDirectBone = m_iHandBoneIndex;
+			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
+		}
+		else
+		{
+			// Order of operations in hierarchical updates and the way camera interpolation
+			// works has forced my hand to recompute all of this into the prop bone (hand) space
+			// so we can ensure that we don't reparent the camera along the way, there still might
+			// be a tiny bit of grain, but this section has already caused enough of pain
+			pOutResult.m_iDirectBone = m_iHandBoneIndex;
+			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
+			pOutResult.m_CameraTM[3] = sightsMS[3];
+			Math3D.AnglesToMatrix(aimingAnglesMS, pOutResult.m_CameraTM);
+			vector directTM[4];
+			m_OwnerCharacter.GetAnimation().GetBoneMatrix(pOutResult.m_iDirectBone, directTM);
+			Math3D.MatrixInvMultiply4(directTM, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
+		}
+
+		pOutResult.m_fFOV = Math.Lerp(targetFOV, GetBaseFOV(), m_fFreelookBlendAlpha);
+		pOutResult.m_fDistance = 0;
+		pOutResult.m_fNearPlane = 0.0125;
+		pOutResult.m_bAllowInterpolation = allowInterpolation;// && (shouldStabilize == m_bWasStabilizedLastFrame);
+		pOutResult.m_fUseHeading = fUseHeading;
+		pOutResult.m_bUpdateWhenBlendOut = true;
+		pOutResult.m_fPositionModelSpace = fPositionModelSpace;
+
+		m_bWasStabilizedLastFrame = shouldStabilize;
+
+		return;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SolveCameraHandAttach(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult, float pDt, bool allowInterpolation)
+	{
+		Animation anim = m_OwnerCharacter.GetAnimation();
+		
+		//! In some cases this compensation is needed (sloped surfaces)
+		float parentPitch = m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+		cameraData.m_vLookAngles[1] = Math.Clamp(cameraData.m_vLookAngles[1] + parentPitch, CONST_UD_MIN, CONST_UD_MAX);
+
+		vector headMatrix[4];
+		anim.GetBoneMatrix(GetCameraBoneIndex(), headMatrix);
+
+		//! Sights transform relative to the head
+		vector sightsRelativeMatrix[4];
+		Math3D.MatrixInvMultiply4(headMatrix, cameraData.m_mSightsLocalMat, sightsRelativeMatrix);
+
+		//! Fetch desired portion of recoil
+		float recoilPortion;
+		if (m_AimingComponent)
+			recoilPortion = Math.Clamp(m_AimingComponent.GetRawAimingTranslation()[2] * cameraData.m_fCamRecoilAmount, -CAMERA_RECOIL_LIMIT, CAMERA_RECOIL_LIMIT);
+
+		//! Local head plane offset by the recoil portion
+		vector headPlane = cameraData.m_vSightsOffset;
+		headPlane[2] = headPlane[2] - recoilPortion;
+
+		//! Project sights onto head plane
+		vector resultPosition = SCR_Math3D.IntersectPlane(sightsRelativeMatrix[3], -sightsRelativeMatrix[2], headPlane, vector.Forward);
+
+		// transform relative to hand
+		vector handMatrix[4];
+		anim.GetBoneMatrix(m_iHandBoneIndex, handMatrix);
+
+		// Get sights relative to anchor
+		vector relativeSightsMatrix[4];
+		// Sight transform relative to head bone
+		Math3D.MatrixInvMultiply4(handMatrix, cameraData.m_mSightsLocalMat, relativeSightsMatrix);
+
+		// Prepare and apply rotation matrix
+		Math3D.AnglesToMatrix(cameraData.m_vLookAngles, pOutResult.m_CameraTM);
+
+		bool isUnstable = false;
+		if (m_CmdHandler)
+		{
+			isUnstable = m_ControllerComponent.IsSprinting() ||
+						m_CmdHandler.GetTargetLadder() != null ||
+						m_ControllerComponent.IsMeleeAttack() ||
+						m_CmdHandler.GetCommandModifier_ItemChange() && m_CmdHandler.GetCommandModifier_ItemChange().IsChangingItemTag();
+		}
+
+		if (isUnstable)
+		{
+			m_fStabilizerAlpha = Math.SmoothCD(m_fStabilizerAlpha, 1.0, m_fStabilizerAlphaVel, 0.14, 1000, pDt);
+			resultPosition = m_lastStablePos;
+		}
+		else
+		{
+			m_fStabilizerAlpha = Math.SmoothCD(m_fStabilizerAlpha, 0.0, m_fStabilizerAlphaVel, 0.14, 1000, pDt);
+		}
+
+		float obstructedAlpha = m_ControllerComponent.GetObstructionAlpha();
+
+		if (m_fStabilizerAlpha > 0 || obstructedAlpha > 0)
+		{
+			float t = Math.Max(m_fStabilizerAlpha, obstructedAlpha);
+			vector headRelativePosition = "0 0 0";
+			resultPosition = vector.Lerp(resultPosition, headRelativePosition, t);
+		}
+
+		if (!isUnstable && obstructedAlpha < 0.001)
+		{
+			m_lastStablePos = resultPosition;
+		}
+
+		//! Get end position rel. to hand
+		resultPosition = resultPosition.Multiply4(headMatrix);
+		resultPosition = resultPosition.InvMultiply4(handMatrix);
+
+
+		//! Apply props
+		pOutResult.m_CameraTM[3] = resultPosition;
+		pOutResult.m_fFOV = cameraData.m_fFOV;
+		pOutResult.m_fDistance = 0;
+		pOutResult.m_fNearPlane = 0.0125;
+		pOutResult.m_bAllowInterpolation = allowInterpolation;
+		pOutResult.m_bUpdateWhenBlendOut = true;
+		pOutResult.m_iDirectBone = m_iHandBoneIndex;
+		pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativePosition;
+		pOutResult.m_fPositionModelSpace = 0.0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SolveCamera2DSight(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult)
+	{
+		// TODO: Please make camera position consistent with 2DPIPSights m_vCameraPoint
+		float targetFOV;
+		m_WeaponManager.GetCurrentSightsCameraTransform(cameraData.m_mSightsLocalMat, targetFOV);
+
+		// TODO@AS: refactor
+		SCR_2DOpticsComponent sights2D = SCR_2DOpticsComponent.Cast(m_WeaponManager.GetCurrentSights());
+		BaseWeaponComponent weapon = m_WeaponManager.GetCurrentWeapon();
+
+		// The camera position shall match the position and angle of camera with PIP scope
+		vector cameraAngles;
+		if (sights2D && weapon && weapon.IsSightADSActive())
+		{
+			vector sightsOffset = sights2D.GetSightsFrontPosition(true) + sights2D.GetCameraOffset() - sights2D.GetSightsOffset();
+			vector cameraOffset = sightsOffset.Multiply3(cameraData.m_mSightsLocalMat);
+			cameraData.m_mSightsLocalMat[3] = cameraData.m_mSightsLocalMat[3] + cameraOffset;
+
+			// Get world orientation of sight
+			// Turrets require getting owner transform to obtain the world transform of the sight reliably
+			vector sightMat[4];
+			sights2D.GetSightsTransform(sightMat, true);
+
+			vector ownerMat[4];
+			sights2D.GetOwner().GetWorldTransform(ownerMat);
+			Math3D.MatrixMultiply3(ownerMat, sightMat, sightMat);
+
+			// Get optic transformation in world coordinates
+			vector opticMat[4];
+			sights2D.GetCameraLocalTransform(opticMat);
+			Math3D.MatrixMultiply3(ownerMat, opticMat, opticMat);
+
+			// Substract optic transformation
+			vector cameraMat[4];
+			Math3D.MatrixInvMultiply3(opticMat, sightMat, cameraMat);
+
+			cameraAngles = Math3D.MatrixToAngles(cameraMat);
+		}
+
+		SCR_2DPIPSightsComponent sightsPIP = SCR_2DPIPSightsComponent.Cast(sights2D);
+		if (sightsPIP)
+			targetFOV = sightsPIP.GetMainCameraFOV();
+
+		//! clamp fov so sights FOV is never greater than current fov?
+		pOutResult.m_fFOV = Math.Min(GetBaseFOV(), targetFOV);
+
+		// Add recoil and sway, reduced by FOV for convenience
+		vector adjustedLookAngles = cameraData.m_vLookAngles;
+
+		AimingComponent aiming = m_OwnerCharacter.GetWeaponAimingComponent();
+		if (aiming)
+		{
+			if (m_ControllerComponent.GetIsWeaponDeployed())
+			{
+				if (!IsProneStance())
+					adjustedLookAngles = aiming.GetAimingRotation();
+			}
+
+			// Arbitrary conversion of aiming translation to recoil angle based on current FOV
+			vector offset = aiming.GetModifiedAimingTranslation() * pOutResult.m_fFOV;
+			adjustedLookAngles = adjustedLookAngles + Vector(offset[1], offset[2], 0);
+		}
+
+		// we start clean
+		vector lookRot[4];
+
+		adjustedLookAngles = adjustedLookAngles - cameraAngles;
+		Math3D.AnglesToMatrix(adjustedLookAngles, lookRot);
+
+		// snap to bone
+		vector handBoneTM[4];
+		m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHandBoneIndex, handBoneTM);
+
+		//! sights transform relative to hand bone
+		Math3D.MatrixInvMultiply4(handBoneTM, cameraData.m_mSightsLocalMat, pOutResult.m_CameraTM);
+		vector finalPos = pOutResult.m_CameraTM[3];
+
+		//! sights in relation to hand
+		vector viewMatHandRel[4];
+		Math3D.MatrixInvMultiply4(handBoneTM, lookRot, pOutResult.m_CameraTM);
+
+		//! apply position
+		pOutResult.m_CameraTM[3] = finalPos;
+
+		//! setup camera props
+		pOutResult.m_iDirectBone 			= m_iHandBoneIndex;
+		pOutResult.m_iDirectBoneMode 		= EDirectBoneMode.RelativeTransform;
+		pOutResult.m_bUpdateWhenBlendOut	= true; // otherwise camera stops blending out properly
+		pOutResult.m_fDistance 				= 0;
+		pOutResult.m_fUseHeading 			= 0;
+		pOutResult.m_fNearPlane				= 0.025;
+		pOutResult.m_bBlendFOV 				= true; // otherwise FOV blend transitions awkwardly
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
+	{
+		if (m_CameraHandler && m_CameraHandler.IsCameraBlending())
+		{
+			if (m_CameraHandler.GetCurrentCamera() == this)
+				OnBlendingIn(m_CameraHandler.GetBlendAlpha(this));
+			else
+				OnBlendingOut(m_CameraHandler.GetBlendAlpha(m_CameraHandler.GetCurrentCamera()));
+		}
+
+		//! update angles
+		SightsComponent sights = m_WeaponManager.GetCurrentSights();
+		bool canFreelook = sights && sights.CanFreelook();
+		//! update fov
+		m_fFreelookFOV = GetBaseFOV();
+
+		pOutResult.m_vBaseAngles = GetBaseAngles();
+
+		//! yaw pitch roll vector
+		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
+		if (!canFreelook)
+		{
+			lookAngles[0] = m_CommandWeapons.GetAimAngleLR();
+			lookAngles[1] = m_CommandWeapons.GetAimAngleUD();
+		}
+		//! Prepare data
+
+		m_pCameraData.m_fDeltaTime = pDt;
+		m_pCameraData.m_vLookAngles = lookAngles;
+		m_pCameraData.m_fFOV = GetBaseFOV();
+
+		//! Fetch sights transformation
+		if (sights)
+		{
+			m_WeaponManager.GetCurrentSightsCameraTransform(m_pCameraData.m_mSightsLocalMat, m_pCameraData.m_fFOV);
+			m_pCameraData.m_vSightsOffset = sights.GetSightsOffset();
+			m_pCameraData.m_fCamRecoilAmount = sights.GetCameraRecoilAmount();
+		}
+		else
+		{
+			Math3D.MatrixIdentity4(m_pCameraData.m_mSightsLocalMat);
+		}
+
+		//! Recalculate FOV
+		m_pCameraData.m_fFOV = Math.Min(GetBaseFOV(), m_pCameraData.m_fFOV);
+
+		//! Fetch zeroing data
+		// Apparently in rare cases like bandaging, weapon can be missing
+		BaseWeaponComponent currentWeapon = m_WeaponManager.GetCurrent();
+		if (currentWeapon)
+		{
+			vector zeroingMatrix[4];
+			if (currentWeapon.GetCurrentSightsZeroingTransform(zeroingMatrix))
+			{
+				// add zeroing to our initial local sights
+				zeroingMatrix[3] = -zeroingMatrix[3];
+				Math3D.MatrixMultiply4(m_pCameraData.m_mSightsLocalMat, zeroingMatrix, m_pCameraData.m_mSightsLocalMat);
+			}
+		}
+
+		// 2nd camera -> provided by sights if any
+		CameraBase overlayCamera;
+
+		//special handling for FOV blending for 2d sights
+		//special handling for eye snapping too
+		SCR_2DPIPSightsComponent pip = SCR_2DPIPSightsComponent.Cast(sights);
+		SCR_2DOpticsComponent sights2d = SCR_2DOpticsComponent.Cast(sights);
+		if (sights2d)
+		{
+			// 2D sights
+			if (!pip || SCR_Global.IsScope2DEnabled())
+			{
+				SolveCamera2DSight(m_pCameraData, pOutResult);
+				pOutResult.m_pOwner 				= m_OwnerCharacter;
+				pOutResult.m_pWSAttachmentReference = null;
+				return;
+			}
+
+			// Camera FOV to be used is different from the sights FOV
+			m_pCameraData.m_fFOV = pip.GetMainCameraFOV();
+			overlayCamera = pip.GetPIPCamera();
+		}
+
+		if (!canFreelook)
+		{
+			m_pCameraData.m_vLookAngles[0] = 0.0;
+		}
+
+		// Store freelook state
+		m_pCameraData.m_bFreeLook = canFreelook && (m_ControllerComponent.IsFreeLookEnabled() || m_bForceFreeLook || m_ControllerComponent.IsTrackIREnabled());
+
+		#ifdef ENABLE_DIAG
+			int solveMethod = DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_ADS_CAMERA);
+
+			if (solveMethod == 1)
+				SolveCameraHandAttach(m_pCameraData, pOutResult, pDt, false);
+			else if (solveMethod == 2)
+				SolveCameraHeadAttach(m_pCameraData, pOutResult);
+			else if (solveMethod == 3)
+				SolveCameraHandAttach(m_pCameraData, pOutResult, pDt, true);
+			else // :-)
+				SolveNewMethod(m_pCameraData, pOutResult, pDt, true);
+		#else
+			SolveNewMethod(m_pCameraData, pOutResult, pDt, true);
+		#endif 
+
+		CameraManager cameraMgr = GetGame().GetCameraManager();
+		if (cameraMgr != null)
+		{
+			// Update overlay camera
+			if (m_pCameraData.m_bFreeLook)
+			{
+				// Supress overlay cam
+				cameraMgr.SetOverlayCamera(null);
+			}
+			else if (overlayCamera)
+			{
+				// Override overlay comera if any is used
+				cameraMgr.SetOverlayCamera(overlayCamera);
+			}
+		}
+
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
+		pOutResult.m_pWSAttachmentReference = null;
+
+		// Apply shake
+		if (m_CharacterCameraHandler)
+			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
+
+		if (!pip)
+			return;
+
+		float offset = pip.GetMainCameraOffset();
+		pOutResult.m_CameraTM[3] = pOutResult.m_CameraTM[3] - Vector(0, 0, offset);
+	}
+	
+	bool IsProneStance()
+	{
+		CharacterAnimationComponent animComponent = m_ControllerComponent.GetAnimationComponent();
+		if (animComponent)
+		{
+			CharacterMovementState charMovementState = new CharacterMovementState();
+			animComponent.GetMovementState(charMovementState);
+			return charMovementState.m_iStanceIdx == ECharacterStance.PRONE;
+		}
+		return false;
+	}
+	
+	bool IsProneADS()
+	{
+		return IsProneStance() && !m_CmdHandler.IsProneStanceTransition() && !m_pCameraData.m_bFreeLook;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected BaseWeaponManagerComponent m_WeaponManager;
+	protected BaseWeaponComponent m_LastWeaponComponent;
+	protected CharacterAimingComponent m_AimingComponent;
+	protected BaseSightsComponent m_BinocularSight;
+	protected BaseSightsComponent m_LastSightsComponent;	// last used weapon sights or null if none
+	protected vector m_vLastSightMS[4];						// last 'unstable' sight transform
+	protected vector m_vLastSightStMS[4];					// last 'stable' sight transform
+	protected float	 m_fLastSightFOV;						// last 'unstable' sight field of view
+	protected float	 m_fLastSightStFOV;						// last 'stable' sight field of view
+	protected bool m_bLastSightsBlend;						// whether sights are being blended, don't set manually
+	protected float m_fLastSightsBlendTime;					// current value of blend, don't set manually
+	protected float m_fLastSightsBlendDuration = 0.15;		// duration of blend in seconds, just a bit is good enough
+	ref ADSCameraData m_pCameraData = new ADSCameraData();
+
+	protected	int 	m_iHandBoneIndex;	//!< hand bone
+	protected	int 	m_iHeadBoneIndex;	//!< head bone
+	protected	AnimationTagID m_iJumpAnimTagId;
+	protected	vector	m_OffsetLS;			//!< position offset
+	protected	float	m_fADSToFPSDeg;		//!< freelook degrees for transitioning into fps pos
+	protected	float	m_fFreelookFOV;
+	protected	vector	m_lastStablePos;
+
+	protected	float	m_fStabilizerAlpha = 0.0;
+	protected	float	m_fStabilizerAlphaVel = 0.0;
+
+	protected	bool	m_bWasStabilizedLastFrame = false;
+
+	protected 	float	m_fFreelookBlendAlpha;
+
+	private		vector	m_vLastEndPos;		//!< last position used for interpolation
+	
+	private		EMuzzleType m_LastMuzzleType = EMuzzleType.MT_BaseMuzzle;
+
+	protected const float CAMERA_INTERP = 0.6;
+	protected const float CAMERA_RECOIL_LIMIT = 0.25; //!< Maximum amount of recoil applied to camera from weapon in meters.
+};
+
+[EntityEditorProps(category: "GameLib/Generic", description:"Crossroad", dynamicBox: true)]
+class CrossroadEntityClass: GenericEntityClass
+{
+}
+
+class CrossroadEntity : GenericEntity
+{
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "If enabled, adjust terrain height map to entity", category: "Terrain")]
+	private bool AdjustHeightMap; 
+	
+	[Attribute(defvalue: "0", desc: "Priority of terrain heightmap adjust", category: "Terrain")]
+	private int AdjustHeightMapPriority;
+	
+	[Attribute(defvalue: "2", uiwidget: UIWidgets.EditBox, desc: "Distance between edge and start of fall-off", category: "Terrain")]
+	private float FalloffStartWidth;
+	
+	[Attribute(defvalue: "20", uiwidget: UIWidgets.EditBox, desc: "Width of the fall-off", category: "Terrain")]
+	private float FalloffWidth;
+	
+	protected void CrossroadEntity(IEntitySource src, IEntity parent)
+	{
+		SetEventMask( EntityEvent.INIT );
+	}
+	
+	//-----------------------------------------------------------------------
+	protected void ~CrossroadEntity()
+	{
+	#ifdef WORKBENCH
+		WorldEditorAPI api = _WB_GetEditorAPI();
+		if (api)
+		{
+			api.RemoveTerrainFlatterEntity(this);
+		}
+	#endif
+	}
+	
+	override protected void EOnInit(IEntity owner)
+	{
+		Init();
+	}
+	
+#ifdef WORKBENCH	
+	ref array<vector> m_Bones = new array<vector>;
+	
+	void Init()
+	{
+		vector mat[4];
+		auto boneNames = new array<string>;
+		Animation anim = GetAnimation();
+		anim.GetBoneNames(boneNames);
+		foreach(string bone: boneNames)
+		{
+			int idx = anim.GetBoneIndex(bone);
+			anim.GetBoneMatrix(idx, mat);
+			m_Bones.Insert(mat[3]);
+		}
+		
+		UpdateTerrain();
+	}
+	
+	void UpdateTerrain()
+	{
+		WorldEditorAPI api = _WB_GetEditorAPI();
+		if (!api) return;
+		
+		if (AdjustHeightMap)
+		{
+			vector mins;
+			vector maxs;
+			GetWorldBounds(mins, maxs);
+			
+			api.AddTerrainFlatterEntity(this, mins, maxs, AdjustHeightMapPriority, FalloffStartWidth, FalloffWidth);
+		}
+		else
+		{
+			api.RemoveTerrainFlatterEntity(this);
+		}
+	}
+
+	override bool _WB_CanAnchorSnap(IEntitySource thisSrc, int thisAnchor, IEntitySource otherSrc, int otherAnchor, bool isReceiver) 
+	{
+		if (isReceiver && otherSrc.GetClassName() == "SplineShapeEntity")
+		{
+			BaseContainerList points = otherSrc.GetObjectArray("Points");
+			if (otherAnchor == 0 || otherAnchor == points.Count() - 1)
+				return true; 
+		}
+		
+		return false;
+	}
+	
+	vector GetTangent(ShapeEntity shape, int pIdx)
+	{
+		array<vector> points = new array<vector>();
+		shape.GetPointsPositions(points);
+		
+		int nPoints = points.Count();
+		if (nPoints < 2)
+			return vector.Zero;
+	
+		
+		if (pIdx == 0)
+		{
+			vector res = (points[1] - points[0]);
+			res.Normalize();
+			return res;
+		}
+	
+		if (pIdx >= nPoints - 1)
+		{
+			vector res = (points[nPoints - 1] - points[nPoints - 2]);
+			res.Normalize();
+			return res;
+		}
+		
+		return vector.Zero;
+	}
+		
+	override void _WB_OnAnchorSnapped(IEntitySource thisSrc, int thisAnchor, IEntitySource otherSrc, int otherAnchor, bool isReceiver)
+	{
+		if (isReceiver && otherSrc.GetClassName() == "SplineShapeEntity")
+		{
+			BaseContainerList points = otherSrc.GetObjectArray("Points");
+			WorldEditorAPI api = _WB_GetEditorAPI();
+			ShapeEntity shape = ShapeEntity.Cast(api.SourceToEntity(otherSrc));
+			int boneIdx = thisAnchor + 1;
+			vector mat[4];
+			
+			if (points && points.Count() > otherAnchor && shape)
+			{	
+				// get crossroad point tangent
+				
+				GetWorldTransform(mat);
+				
+				// apply bone transform
+				vector crossroadTangent = (m_Bones[boneIdx] - m_Bones[0]).Normalized().Multiply3(mat);
+				
+				// get spline point tangent			
+				shape.GetWorldTransform(mat);
+				vector splineTangent = GetTangent(shape, otherAnchor).Multiply3(mat);
+				
+				float len = Math.Max(0.2, 1.0 - Math.AbsFloat(vector.Dot(-splineTangent, crossroadTangent)));
+				vector finalSplineTangent = crossroadTangent.InvMultiply3(mat) * len * 300;
+				
+				api.BeginEntityAction("Snap to crossroad");
+				// adjust spline control point
+				BaseContainer point = points[otherAnchor];
+				BaseContainerList pointData = point.GetObjectArray("Data");
+				if (pointData.Count() == 0)
+				{
+					api.CreateObjectArrayVariableMember(point, null, "Data", "SplinePointData", 0);
+				}
+
+				array<ref ContainerIdPathEntry> containerPath = {ContainerIdPathEntry("Points", otherAnchor), ContainerIdPathEntry("Data", 0)};
+				if (otherAnchor == 0)
+				{
+					api.SetVariableValue(otherSrc, containerPath, "OutTangent", finalSplineTangent.ToString(false));		
+				}
+				else
+				{
+					api.SetVariableValue(otherSrc, containerPath, "InTangent", (-finalSplineTangent).ToString(false));		
+				}
+								
+				//adjust bone
+				
+				api.EndEntityAction();
+			}
+		}
+	}
+	
+	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
+	{
+		UpdateTerrain();
+		return false;
+	}	
+	
+	override int _WB_GetAnchorCount(IEntitySource src)
+	{
+		int cnt = m_Bones.Count();
+		if (cnt > 2)
+			return m_Bones.Count() - 1;
+		return 0;
+	}
+	
+	override void _WB_GetAnchor(inout vector position, IEntitySource src, int index)
+	{
+		position = m_Bones[index + 1];
+	}
+#else
+	void Init()
+	{
+	}
+#endif
+}
+
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Visual
+\{
+*/
+
+sealed class Animation: pointer
+{
+	proto external void	SetBone(IEntity ent, TNodeId bone, vector angles, vector trans, float scale);
+	proto external bool	SetBoneMatrix(IEntity ent, TNodeId bone, vector mat[4]);
+	proto external bool	GetBoneMatrix(TNodeId bone, out vector mat[4]);
+	proto external TNodeId	GetBoneIndex(string boneName);
+	proto external void	GetBoneNames(out notnull array<string> boneNames);
+	proto external bool	GetBoneLocalMatrix(TNodeId bone, out vector mat[4]);
+	proto external bool	SetMorphState(string name, float value);
+}
+
+/*!
+\}
+*/
+// *************************************************************************************
+// ! CharacterCamera3rdPersonBase - base 3rd person camera
+// *************************************************************************************
+class CharacterCamera3rdPersonBase extends CharacterCameraBase
+{
+	//-----------------------------------------------------------------------------
+	static const float 	CONST_UD_MIN	= -89.0;		//!< down limit
+	static const float 	CONST_UD_MAX	= 89.0;			//!< up limit
+
+	static const float 	CONST_LR_MIN	= -160.0;		//!< left limit
+	static const float 	CONST_LR_MAX	= 160.0;		//!< right limit
+
+	//-----------------------------------------------------------------------------
+	void CharacterCamera3rdPersonBase(CameraHandlerComponent pCameraHandler)
+	{
+		m_fFOVFilterVel = 0;
+	}
+
+	//-----------------------------------------------------------------------------
+	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
+	{
+		super.OnActivate(pPrevCamera, pPrevCameraResult);
+		if (pPrevCamera)
+		{
+			// Use last shoulder state
+			m_fShoulderLRPrefered = GetShoulderLastActive();
+		}
+		m_fFOVFilter = pPrevCameraResult.m_fFOV;
+	}
+
+	//-----------------------------------------------------------------------------
+	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
+	{
+		pOutResult.m_vBaseAngles = GetBaseAngles();
+		
+		//! update fov
+		m_fFOV = GetBaseFOV();
+
+		//! yaw pitch roll vector
+		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
+
+		if (!m_bIgnoreCharacterPitch)
+			lookAngles[1] = lookAngles[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+
+		//! apply to rotation matrix
+		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
+								
+		//! base bone pos 
+		if (m_iBoneIndex != -1)
+		{
+			vector boneMatrix[4];
+			m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iBoneIndex, boneMatrix);
+			pOutResult.m_CameraTM[3]	= boneMatrix[3];
+		}
+		else
+		{
+			pOutResult.m_CameraTM[3]	= "0 0 0";
+		}
+
+		//! shoulder pos
+		float leaning = m_ControllerComponent.GetLeaning();
+		if( leaning < -0.1 )
+			m_fShoulderLRPrefered = -1;
+		else if( leaning > 0.1 )
+			m_fShoulderLRPrefered = 1;
+		
+		m_fShoulderLROffset = Math.SmoothCD(m_fShoulderLROffset, m_fShoulderLRPrefered, m_fCameraLRShoulderVel, 0.14, 1000, pDt);
+		
+		m_fLeaningOffset = m_ControllerComponent.GetCurrentLeanAmount();
+		float shoulderDist = GetShoulderDistance();
+		
+		//! apply shoulder dist
+		vector msOffset = m_CameraOffsetMS;
+		vector lsOffset = m_CameraOffsetLS;
+		if (m_bShoulderInLS)
+		{
+			lsOffset[0] = lsOffset[0] + shoulderDist;
+		}
+		else
+		{
+			msOffset[0] = msOffset[0] + shoulderDist;
+		}
+		
+		// character matrix
+		vector charMat[4];
+		m_OwnerCharacter.GetTransform(charMat);
+		
+		//! apply velocity
+		vector velocity = m_ControllerComponent.GetVelocity();		
+		velocity = velocity.InvMultiply3(charMat);
+		for (int i = 0; i < 3; i++)
+		{
+			velocity[i] = Math.Clamp(velocity[i], -m_vMaxVelocity[i], m_vMaxVelocity[i]);
+		}
+		m_v3rd_VelocityAdd += (velocity - m_v3rd_VelocityAdd) * pDt * 2;
+		
+		msOffset = msOffset + m_v3rd_VelocityAdd * -0.05;
+		// ls offset + ms offset + shoulder width			
+		pOutResult.m_CameraTM[3]		= pOutResult.m_CameraTM[3] + pOutResult.m_CameraTM[0] * lsOffset[0] + pOutResult.m_CameraTM[1] * lsOffset[1] + pOutResult.m_CameraTM[2] * lsOffset[2] + msOffset;
+		
+		float currY = pOutResult.m_CameraTM[3][1];
+		if (m_fYoffsetPrevFrame == 0)
+		{
+			m_fYoffsetPrevFrame = currY;
+		}
+		m_fYoffsetPrevFrame = Math.Lerp(m_fYoffsetPrevFrame, currY, 0.01);
+		float yDelta = 1;
+		if (m_fYoffsetPrevFrame != 0)
+		{
+			yDelta = Math.Pow(currY/m_fYoffsetPrevFrame, 2); // easing
+		}
+		
+		pOutResult.m_CameraTM[3][1] = m_fYoffsetPrevFrame * yDelta;
+		
+		m_fBobScale = m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, true);
+		// follow hip bone when ragdolling
+		if(m_OwnerCharacter.GetAnimationComponent().IsRagdollActive())
+		{
+			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
+			pOutResult.m_iDirectBone = m_OwnerCharacter.GetAnimation().GetBoneIndex("Hips");
+		}
+		
+		//! store distance 
+		pOutResult.m_fDistance 				= m_fDistance;
+		pOutResult.m_iDirectBoneMode		= EDirectBoneMode.None;
+		pOutResult.m_fUseHeading 			= 1.0;
+		pOutResult.m_fShoulderDist			= m_fShoulderLROffset;
+		pOutResult.m_fNearPlane	 			= 0.04;
+		pOutResult.m_fPositionModelSpace 	= 1.0;
+		pOutResult.m_pWSAttachmentReference = null;
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
+
+		m_fFOVFilter = Math.SmoothCD(m_fFOVFilter, pOutResult.m_fFOV, m_fFOVFilterVel, 0.2, 1000, pDt);
+		pOutResult.m_fFOV = m_fFOVFilter;
+	}
+
+	//-----------------------------------------------------------------------------
+	override float GetBaseFOV()
+	{
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return 0;
+		
+		return cameraManager.GetThirdPersonFOV();
+	}
+	
+	//-----------------------------------------------------------------------------
+	//! Get active shoulder state
+	//! used to remember the state when switched back from another camera
+	int  GetActiveShoulder()
+	{
+		return m_fShoulderLRPrefered;
+	}
+	
+	//-----------------------------------------------------------------------------
+	override float GetShoulderDistance()
+	{
+		return m_fShoulderLROffset * m_fShoulderWidth + m_fLeanDistance * m_fLeaningOffset;
+	}
+	//-----------------------------------------------------------------------------
+	//! runtime config
+	protected	int 	m_iBoneIndex = -1;	//!< main bone 
+	protected 	vector  m_CameraOffsetMS;	//!< model space offset
+	protected 	vector  m_CameraOffsetLS;	//!< local space offset
+	protected 	float 	m_fDistance;		//!< distance from start
+	protected 	float 	m_fShoulderWidth;	//!< shoulder camera widths
+	protected 	bool	m_bShoulderInLS;	//!< true - shoulder is in local space
+	protected	float	m_fLeanDistance;
+	protected	vector	m_vMaxVelocity = "2 2 2";
+
+	protected	float	m_fBobScale;
+	
+	protected	int 	m_fShoulderLRPrefered = 1;	//!> which shoulder is active? (1 - right, -1 left)
+	protected	float	m_fShoulderLROffset;
+	protected	float	m_fLeaningOffset;
+	protected	float 	m_fCameraLRShoulderVel;	//!> velocity for CD filter
+	protected	float	m_fLeaningOffsetVel;
+	protected	vector	m_v3rd_VelocityAdd = vector.Zero;
+	protected 	float 	m_fYoffsetPrevFrame = 0.0; //!< LS Y offset of the camera in the past
+};
+#define ENABLE_BASE_DESTRUCTION
+
+[ComponentEditorProps(category: "GameScripted")]
+class SCR_DestructionTireInitialDamageDataComponentClass: ScriptComponentClass
+{
+	[Attribute("", UIWidgets.Object, "Initial damage phase data", category: "Destruction Multi-Phase")]
+	ref SCR_DamagePhaseData InitialData;	
+}
+
+[ComponentEditorProps(category: "GameScripted/Destruction", description: "Tire destruction component, for destruction and deformation of tires")]
+class SCR_DestructionTireComponentClass: SCR_DestructionMultiPhaseComponentClass
+{
+}
+
+//! Tire destruction component, for destruction and deformation of tires
+class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
+{
+	protected static const int MAX_BONES = 36;
+
+	//
+	// Category: Tire Destruction
+	//
+
+	[Attribute("", UIWidgets.EditBox, "List of phases in which the tire should handle deformation (this also means deflating)", category: "Tire Destruction")]
+	protected ref array<int> m_DeformPhaseIndexes;
+
+	[Attribute("0.15", UIWidgets.Slider, "Rate at which the tire deflates when in a tire deformation damage phase (in %/s)", "0.01 1000 0.01", category: "Tire Destruction")]
+	protected float m_fDeflationRate;
+
+	[Attribute("Tyre_", UIWidgets.EditBox, "Name prefix (followed then by index) of the tire deformation joints", category: "Tire Destruction")]
+	protected string m_sTireJointNamePrefix;
+
+	[Attribute("1", UIWidgets.CheckBox, "If true, tire damage and destruction will affect vehicle physics (if attached to such)", category: "Tire Destruction")]
+	protected bool m_bAffectPhysics;
+	
+	//
+	// Category: Tire Deformation Simple
+	//
+
+	[Attribute("1", UIWidgets.Slider, "Ground deformation of the tire (in %)", "0 1 0.01", category: "Tire Deformation Simple")]
+	protected float m_fGroundSlumpScale;
+
+	[Attribute("1", UIWidgets.Slider, "Radial deformation of the tire (in %)", "0 1 0.01", category: "Tire Deformation Simple")]
+	protected float m_fRadiusScale;
+
+	[Attribute("1", UIWidgets.Slider, "Width deformation of the tire (in %)", "0 1 0.01", category: "Tire Deformation Simple")]
+	protected float m_fTireWidthScale;
+
+	[Attribute("1", UIWidgets.Slider, "Sideward skew deformation of the tire (in %)", "0 1 0.01", category: "Tire Deformation Simple")]
+	protected float m_fTireSideSkewScale;
+	
+	//
+	// Category: Tire Deformation Advanced
+	//
+
+	[Attribute("0.75", UIWidgets.Slider, "Ground contact width scale addition (in %) - [Scaled by m_fGroundSlumpScale]", "-2 2 0.01", category: "Tire Deformation Advanced")]
+	protected float m_fDeformParam_ScaleAdd_SquishWidthGround;
+
+	[Attribute("-0.3", UIWidgets.Slider, "Opposite to ground width scale addition (in %) - [Scaled by m_fTireWidthScale]", "-2 2 0.01", category: "Tire Deformation Advanced")]
+	protected float m_fDeformParam_ScaleAdd_SquishWidthTop;
+
+	[Attribute("0.25", UIWidgets.Slider, "Flatten tire top offset (in m) - [Scaled by m_fRadiusScale]", "-10 10 0.01", category: "Tire Deformation Advanced")]
+	protected float m_fDeformParam_Offset_FlattenTop;
+
+	[Attribute("0.25", UIWidgets.Slider, "Outward slump of tire on front/back of ground contact point (in m) - [Scaled by m_fGroundSlumpScale]", "-10 10 0.01", category: "Tire Deformation Advanced")]
+	protected float m_fDeformParam_Offset_GroundSlump;
+
+	[Attribute("0.1", UIWidgets.Slider, "Outward extrusion near ground contact point (in m)", "-10 10 0.01", category: "Tire Deformation Advanced")]
+	protected float m_fDeformParam_Offset_ExtrudeBottomOutward;
+
+	[Attribute("0.35", UIWidgets.Slider, "Upward extrusion near ground contact point (in m)", "-10 10 0.01", category: "Tire Deformation Advanced")]
+	protected float m_fDeformParam_Offset_ExtrudeBottomUpward;
+
+	[Attribute("0.1", UIWidgets.Slider, "Downward extrusion of top opposite ground contact point (in m)", "-10 10 0.01", category: "Tire Deformation Advanced")]
+	protected float m_fDeformParam_Offset_ExtrudeTopDownward;
+
+	[Attribute("0.01", UIWidgets.Slider, "Sideward skew extrusion all around the tire (in m) - [Scaled by m_fTireSideSkewScale]", "-10 10 0.01", category: "Tire Deformation Advanced")]
+	protected float m_fDeformParam_Offset_ExtrudeSidewardSkew;
+	
+#ifdef ENABLE_BASE_DESTRUCTION
+	protected bool m_bHandleDeformation;
+	protected float m_fInflation = 1;
+	protected float m_fWheelRadius = -1;
+	protected ref array<int> m_WheelBones = {};
+	protected ref SCR_DamagePhaseData m_InitialData;
+	
+	protected VehicleWheeledSimulation m_VehicleWheeledSimulation;
+
+	protected int m_iWheelIndex = -1;
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets the wheel index for the tire and updates it's radius
+	//! \param[in] wheelIndex
+	void SetWheelIndex(int wheelIndex)
+	{
+		m_iWheelIndex = wheelIndex;
+		
+		if (m_iWheelIndex > -1 && m_VehicleWheeledSimulation && m_iWheelIndex < m_VehicleWheeledSimulation.WheelCount())
+			m_fWheelRadius = m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] damagePhase
+	//! \return whether deformation should be handled in the input damage
+	bool GetShouldHandleDeformation(int damagePhase)
+	{
+		return m_DeformPhaseIndexes && m_DeformPhaseIndexes.Find(damagePhase) != -1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Enables/disables handling of tire deformation and deflation
+	//! \param[in] enable
+	void EnableTireDeformation(bool enable)
+	{
+#ifdef ENABLE_DEFORMATION
+		m_bHandleDeformation = enable;
+#endif
+		
+		m_WheelBones.Clear();
+		if (!m_bHandleDeformation)
+			return;
+		
+		for (int i = 0; i < MAX_BONES; i++)
+		{
+			int boneIndex = GetOwner().GetAnimation().GetBoneIndex(m_sTireJointNamePrefix + i.ToString());
+			if (boneIndex > -1)
+				m_WheelBones.Insert(boneIndex);
+		}
+	}
+	
+	protected float groundContactPct1 = 1;
+
+	//------------------------------------------------------------------------------------------------
+	override void OnFrame(IEntity owner, float timeSlice)
+	{
+		super.OnFrame(owner, timeSlice);
+		
+		if (!m_bHandleDeformation)
+			return;
+		
+		// Update the physics wheel radius
+		if (m_VehicleWheeledSimulation && m_fWheelRadius > 0)
+		{
+			float targetWheelRadius = (0.5 + m_fInflation * 0.5) * m_fWheelRadius;
+			if (targetWheelRadius != m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex))
+			{
+				m_VehicleWheeledSimulation.WheelSetRadiusState(m_iWheelIndex, targetWheelRadius);
+				
+				Physics physics = null;
+				IEntity parent = owner.GetParent();
+				if (parent)
+				{
+					physics = parent.GetPhysics();
+
+					if (physics && !physics.IsActive())
+						physics.SetActive(ActiveState.ACTIVE);
+				}
+			}
+		}
+		
+		// Handle deformation and deflation of the tire
+		vector floorNorm = vector.Up;
+		vector wheelMat[4];
+		owner.GetTransform(wheelMat);
+		
+		m_fInflation = Math.Clamp(timeSlice * -m_fDeflationRate + m_fInflation, 0, 1);
+		
+		float deflationPct = 1 - Math.Pow(1 - Math.Clamp((1 - m_fInflation) * 2, 0, 1), 1.5);
+		float deflationExpPct = (1 - Math.Clamp(m_fInflation * 1.7, 0, 1));
+		deflationExpPct += (1 - deflationExpPct) * deflationExpPct;
+		deflationExpPct *= deflationExpPct;
+		float deflationExpPct2 = (1 - Math.Clamp(m_fInflation * 1.1, 0, 1));
+		deflationExpPct2 += (1 - deflationExpPct2) * deflationExpPct2;
+		deflationExpPct2 *= deflationExpPct2;
+		groundContactPct1 = Math.Clamp(groundContactPct1 + (Debug.KeyState(KeyCode.KC_RIGHT) - Debug.KeyState(KeyCode.KC_LEFT)) * timeSlice, 0, 1);
+		float groundContactPct = groundContactPct1;
+		
+		// Apply deformation
+		vector boneMatLocal[4];
+		int numBones = m_WheelBones.Count();
+		for (int i = 0; i < numBones; i++)
+		{
+			int boneIndex = m_WheelBones.Get(i);
+			owner.GetAnimation().GetBoneMatrix(boneIndex, boneMatLocal);
+			vector boneUp = boneMatLocal[2].Normalized();
+			boneUp = boneUp.Multiply3(wheelMat);
+			float boneFloorDot = Math.Clamp(floorNorm * boneUp, 0, 1);
+			float boneTopDot = 1 - boneFloorDot;
+			float tyreBottom = Math.Pow(boneFloorDot, 2);
+			float tyreTop = Math.Pow(boneTopDot, 2);
+			
+			float widthScale = 1;
+			widthScale += tyreBottom * deflationPct * m_fDeformParam_ScaleAdd_SquishWidthGround * m_fGroundSlumpScale * groundContactPct; // Squish out the tyre at the floor
+			widthScale += tyreTop * deflationExpPct * m_fDeformParam_ScaleAdd_SquishWidthTop * m_fTireWidthScale * groundContactPct; // Thin out the tyre above
+			widthScale += deflationExpPct * m_fDeformParam_ScaleAdd_SquishWidthTop * m_fTireWidthScale * (1 - groundContactPct); // Thin out the tyre above
+			
+			float heightOffset = 0;
+			heightOffset += boneTopDot * deflationExpPct2 * m_fDeformParam_Offset_FlattenTop * m_fRadiusScale * tyreTop; // Flatten top of the tyre
+			heightOffset += boneTopDot * deflationExpPct * m_fDeformParam_Offset_GroundSlump * m_fGroundSlumpScale * (1 - tyreTop); // Flatten all but bottom and top of the tyre
+			heightOffset += Math.Sin(tyreBottom * 180 * Math.DEG2RAD) * deflationPct * -m_fDeformParam_Offset_ExtrudeBottomOutward; // Offset bottom-sides outward
+			
+			float squishHeightOffset = 0;
+			squishHeightOffset += tyreBottom * deflationPct * m_fDeformParam_Offset_ExtrudeBottomUpward * groundContactPct; // Offset bottom upward
+			squishHeightOffset += tyreTop * deflationPct * m_fDeformParam_Offset_ExtrudeTopDownward * (1 - groundContactPct); // Offset top downward
+			
+			int sidePct = (i % 3);
+			float sideOffset = (-1 + (float)sidePct * 2) * deflationExpPct * m_fDeformParam_Offset_ExtrudeSidewardSkew * m_fTireSideSkewScale; // Offset based on joint num
+			
+			vector localBoneMat[4];
+			Math3D.MatrixIdentity4(localBoneMat);
+			
+			localBoneMat[0] = vector.Right * widthScale;
+			localBoneMat[3] = vector.Forward * (heightOffset + squishHeightOffset) + vector.Right * sideOffset;
+			
+			owner.GetAnimation().SetBoneMatrix(owner, boneIndex, localBoneMat);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pData
+	void ReturnToInitialDamagePhase(SCR_DamagePhaseData pData)
+	{
+		if (GetDamagePhase() != 0)
+			SetDamagePhase(0);
+		
+		if (GetTargetDamagePhase() != 0)
+			SetTargetDamagePhase(0);
+	
+		ApplyDamagePhaseData(pData, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Switches to the input damage phase (or deletes if past last phase)
+	//! \param[in] damagePhase
+	//! \param[in] delayMeshChange
+	override void GoToDamagePhase(int damagePhase, bool delayMeshChange)
+	{
+		if (damagePhase == 0)
+			ReturnToInitialDamagePhase(m_InitialData);
+		else
+			super.GoToDamagePhase(damagePhase, delayMeshChange);
+		
+		EnableTireDeformation(GetShouldHandleDeformation(GetDamagePhase()));
+//		if (m_bHandleDeformation)
+//			EnableOnFrame(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnPostInit(IEntity owner)
+	{
+		super.OnPostInit(owner);
+		if (!owner)
+			return;
+		
+		EntityComponentPrefabData prefabData = owner.FindComponentData(SCR_DestructionTireInitialDamageDataComponentClass);
+		if (prefabData)
+		{
+			SCR_DestructionTireInitialDamageDataComponentClass data = SCR_DestructionTireInitialDamageDataComponentClass.Cast(prefabData);
+			if (data)
+				m_InitialData = data.InitialData;
+		}
+		
+		EnableTireDeformation(GetShouldHandleDeformation(GetDamagePhase()));
+		
+		IEntity parent = owner.GetParent();
+		
+		if (parent)
+		{
+			m_VehicleWheeledSimulation = VehicleWheeledSimulation.Cast(parent.FindComponent(VehicleWheeledSimulation));
+		}
+	}
+#endif
+}
+[EntityEditorProps(category: "GameBase/Joints", description: "Physics joint base", sizeMin: "-0.05 -0.05 -0.05", sizeMax: "0.05 0.05 0.05", color: "0 0 255 255")]
+class SCR_JointBaseEntityClass: GenericEntityClass
+{
+};
+
+//------------------------------------------------------------------------------------------------
+//! SCR_JointBaseEntity Class
+//! 
+//! TODO: doc
+//------------------------------------------------------------------------------------------------
+class SCR_JointBaseEntity: GenericEntity
+{
+	[Attribute("-1", UIWidgets.ComboBox, "Snap joint to bone in parent (one-time)", "")]
+	int SNAP_TO_PARENT_BONE;
+	//[Attribute("-1", UIWidgets.ComboBox, "Snap child to joint by bone in child (one-time)", "")]
+	//int SNAP_CHILD_BY_JOINT;
+	[Attribute("1", UIWidgets.CheckBox, "Whether to create collision blocker between parent and child" )]
+	bool m_CollisionBlocker;
+	
+	IEntity m_JointParent = null;
+	IEntity m_JointChild = null;
+	SCR_JointDummyHolderEntity m_JointDummy = null;
+	
+	PhysicsJoint m_Joint = null;
+	
+	// TODO:
+	// - Do stress and breakage (in engine)
+	// - SNAP_CHILD_BY_JOINT does not work! After setting of the property, child is NULL!	
+
+	//------------------------------------------------------------------------------------------------
+	void MoveJointToParentBone()
+	{
+		if (!m_JointParent)
+			return;
+		
+		if (SNAP_TO_PARENT_BONE <= 0)
+			return;
+		
+		vector boneMat[4];
+		
+		m_JointParent.GetAnimation().GetBoneMatrix(SNAP_TO_PARENT_BONE, boneMat);
+		
+		vector angles = Math3D.MatrixToAngles(boneMat);
+		vector pos = boneMat[3];
+		
+		// TODO: Deselect or at least reselect joint after doing following steps
+	#ifdef WORKBENCH
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		worldEditorAPI.BeginEntityAction("Move to parent bone", "");
+		worldEditorAPI.ClearEntitySelection();
+		
+		IEntitySource src = _WB_GetEditorAPI().EntityToSource(this);
+		worldEditorAPI.SetVariableValue(src, null, "coords", pos.ToString(false));
+		worldEditorAPI.SetVariableValue(src, null, "angleX", angles[1].ToString());
+		worldEditorAPI.SetVariableValue(src, null, "angleY", angles[0].ToString());
+		worldEditorAPI.SetVariableValue(src, null, "angleZ", angles[2].ToString());
+		worldEditorAPI.SetVariableValue(src, null, "SNAP_TO_PARENT_BONE", "-1");
+		worldEditorAPI.EndEntityAction("Move to parent bone");
+	#endif
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*void MoveChildToJointByBone()
+	{
+		Print(m_JointChild);
+		if (!m_JointChild)
+			return;
+		
+		if (SNAP_CHILD_BY_JOINT <= 0)
+			return;
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+
+		// Special case (origin)
+		if (SNAP_CHILD_BY_JOINT == 999999)
+		{
+			// TODO: Deselect or at least reselect joint after doing following steps
+			worldEditorAPI.BeginEntityAction("Move child to joint by bone", "");
+			worldEditorAPI.ClearEntitySelection();
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "coords", "0 0 0");
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleX", "0");
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleY", "0");
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleZ", "0");
+			worldEditorAPI.SetVariableValue(this, null, "SNAP_CHILD_BY_JOINT", "-1");
+			worldEditorAPI.EndEntityAction("Move child to joint by bone");
+		}
+		else
+		{
+			vector boneMat[4], baseMat[4], endBoneMat[4];
+			
+			GetBoneMatrix(m_JointChild, SNAP_CHILD_BY_JOINT, boneMat);
+			Math3D.MatrixIdentity4(baseMat);
+			Math3D.MatrixInvMultiply4(baseMat, boneMat, endBoneMat);
+			
+			
+			vector angles = Math3D.MatrixToAngles(endBoneMat);
+			vector pos = endBoneMat[3];
+			
+			// TODO: Deselect or at least reselect joint after doing following steps
+			worldEditorAPI.BeginEntityAction("Move child to joint by bone", "");
+			worldEditorAPI.ClearEntitySelection();
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "coords", pos.ToString(false));
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleX", angles[1].ToString());
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleY", angles[0].ToString());
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleZ", angles[2].ToString());
+			worldEditorAPI.SetVariableValue(this, null, "SNAP_CHILD_BY_JOINT", "-1");
+			worldEditorAPI.EndEntityAction("Move child to joint by bone");
+		}
+	}*/
+	
+	//------------------------------------------------------------------------------------------------
+	#ifdef WORKBENCH
+		//------------------------------------------------------------------------------------------------
+		override array<ref ParamEnum> _WB_GetUserEnums(string varName, IEntitySource src)
+		{
+			if (varName == "SNAP_TO_PARENT_BONE" && m_JointParent)
+				return SCR_Global.GetBonesAsParamEnums(m_JointParent);
+			/*if (varName == "SNAP_CHILD_BY_JOINT" && m_JointChild)
+			{
+				array<ref ParamEnum> retEnums = SCR_Global.GetBonesAsParamEnums(m_JointChild);
+				retEnums.Insert(new ParamEnum("ORIGIN", "999999", "")); // Always have ORIGIN as an option
+				return retEnums;
+			}*/
+			
+			return null;
+		}
+		
+		//------------------------------------------------------------------------------------------------
+		override void _WB_AfterWorldUpdate(float timeSlice)
+		{
+			if (m_JointParent)
+				Shape.CreateArrow(m_JointParent.GetOrigin(), GetOrigin(), 0.05, ARGB(255, 128, 128, 0), ShapeFlags.ONCE|ShapeFlags.NOZBUFFER);
+			if (m_JointChild)
+				Shape.CreateArrow(GetOrigin(), m_JointChild.GetOrigin(), 0.05, ARGB(255, 128, 128, 0), ShapeFlags.ONCE|ShapeFlags.NOZBUFFER);
+			DebugDisplay();
+		}
+	#endif
+	
+	//------------------------------------------------------------------------------------------------
+	void DestroyJoint()
+	{
+		if (m_Joint)
+		{
+			// TODO: Remove this once deletion of joints is ensured before physics scene deletion
+			if (m_JointParent || m_JointChild)
+				m_Joint.Destroy();
+		}
+		m_Joint = null;
+		
+		if (m_JointDummy)
+			delete m_JointDummy;
+		m_JointDummy = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void TryCreateJoint(bool showErrors)
+	{
+		DestroyJoint();
+		
+		if (!m_JointParent && !m_JointChild)
+		{
+			if (showErrors)
+			{
+				Print("JointHingeEntity::CreateJoint: ERROR - cannot create joint, no parent and no child!");
+				CreateFailedJointDebug(128, 255, 0, 0);
+			}
+			return;
+		}
+		
+		Physics parentPhysics = null;
+		Physics childPhysics = null;
+		if (m_JointParent)
+			parentPhysics = m_JointParent.GetPhysics();
+		if (m_JointChild)
+			childPhysics = m_JointChild.GetPhysics();
+		if (!parentPhysics && !childPhysics)
+		{
+			if (showErrors)
+			{
+				Print("JointHingeEntity::CreateJoint: ERROR - cannot create joint, neither parent nor child have physics!");
+				CreateFailedJointDebug(128, 255, 0, 0);
+			}
+			return;
+		}
+		
+		if (parentPhysics && childPhysics && !parentPhysics.IsDynamic() && !childPhysics.IsDynamic())
+		{
+			if (showErrors)
+			{
+				Print("JointHingeEntity::CreateJoint: ERROR - cannot create joint, neither parent nor child are dynamic!");
+				CreateFailedJointDebug(128, 255, 0, 0);
+			}
+			return;
+		}
+		
+		IEntity parent = m_JointParent;
+		IEntity child = m_JointChild;
+		
+		// Nullify parent
+		if (parent && parentPhysics && !parentPhysics.IsDynamic())
+			parent = null;
+		if (child && childPhysics && !childPhysics.IsDynamic())
+			child = null;
+		
+		if (showErrors && !parent && !child)
+		{
+			Print("JointHingeEntity::CreateJoint: ERROR - cannot create joint, no connected dynamic entities!");
+			CreateFailedJointDebug(128, 255, 128, 0);
+		}
+		
+		if (!parent || !child) // We have no parent or child, so create a dummy joint attachment point
+		{
+			m_JointDummy = SCR_JointDummyHolderEntity.Cast(GetGame().SpawnEntity(SCR_JointDummyHolderEntity));
+			
+			vector jointDummyMat[4];
+			GetTransform(jointDummyMat);
+			m_JointDummy.SetDummyTransform(jointDummyMat);
+			
+			float mass = 0;
+			if (parent)
+				mass = parentPhysics.GetMass();
+			else
+				mass = childPhysics.GetMass();
+			
+			m_JointDummy.GetPhysics().SetMass(mass * 1000);
+			
+			
+			// Link the static dummy point
+			if (parent)
+				child = m_JointDummy;
+			else
+				parent = m_JointDummy;
+		}
+		
+		// Ensure static entity is the child (must be 'ent2' for the API)
+		if (!parentPhysics || !parentPhysics.IsDynamic())
+		{
+			IEntity tmp = parent;
+			parent = child;
+			child = tmp;
+		}
+		
+		// First get matrices of parent, child and joint
+		vector parentMat[4], childMat[4], jointMat[4];
+		parent.GetTransform(parentMat);
+		child.GetTransform(childMat);
+		GetTransform(jointMat);
+		
+		// Rotate the joint if necessary (inout function)
+		RotateJoint(jointMat);
+		
+		// Now get local matrices of parent and child relative to joint
+		vector jointMatParentLocal[4], jointMatChildLocal[4];
+		Math3D.MatrixInvMultiply4(parentMat, jointMat, jointMatParentLocal);
+		Math3D.MatrixInvMultiply4(childMat, jointMat, jointMatChildLocal);
+		
+		// Subtract center of mass positions
+		if (parentPhysics)
+			jointMatParentLocal[3] = jointMatParentLocal[3] - parentPhysics.GetCenterOfMass();
+		else
+			jointMatParentLocal[3] = jointMatParentLocal[3];
+		if (childPhysics)
+			jointMatChildLocal[3] = jointMatChildLocal[3] - childPhysics.GetCenterOfMass();
+		else
+			jointMatChildLocal[3] = jointMatChildLocal[3];
+		
+		// Create the joint
+		CreateJoint(parent, child, jointMatParentLocal, jointMatChildLocal);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RotateJoint(inout vector jointMat[4])
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CreateJoint(IEntity parent, IEntity child, vector jointMat1[4], vector jointMat2[4])
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CreateFailedJointDebug(int a, int r, int g, int b)
+	{
+		int color = ARGB(a, r, g, b);
+		vector myPos = GetOrigin();
+		Shape.Create(ShapeType.BBOX, color, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, "-0.1 0.2 -0.1" + myPos, "0.1 1.2 0.1" + myPos);
+		Shape.Create(ShapeType.BBOX, color, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, "-0.1 -0.1 -0.1" + myPos, "0.1 0.1 0.1" + myPos);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void DebugDisplay()
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override event void EOnInit(IEntity owner) //!EntityEvent.INIT
+	{
+		m_JointChild = GetChildren();
+		
+		TryCreateJoint(GetGame().GetGameStarted());
+		
+		MoveJointToParentBone();
+		//MoveChildToJointByBone();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_JointBaseEntity(IEntitySource src, IEntity parent)
+	{
+		m_JointParent = parent;
+		
+		SetEventMask(EntityEvent.INIT);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_JointBaseEntity()
+	{
+		DestroyJoint();
+	}
+};
+//------------------------------------------------------------------------------------------------
+//! Entity states for nametags
+//! Order affects state priority with DEFAULT state being the lowest
+enum ENameTagEntityState
+{
+	DEFAULT		 	= 1,	// alive
+	FOCUSED 		= 1<<1,	// focused
+	AI_SUBORDINATE	= 1<<2, // used for AIs that are under players command through commanding system
+	GROUP_MEMBER	= 1<<3,	// part of the same squad
+	UNCONSCIOUS 	= 1<<4,	// unconscious
+	VON 			= 1<<5,	// voice over network
+	DEAD 			= 1<<6,	// dead
+	HIDDEN 			= 1<<7	// tag is hidden
+};
+
+//------------------------------------------------------------------------------------------------
+//! Nametag flags
+enum ENameTagFlags
+{
+	UNUSED 				= 1,			
+	VISIBLE_PASS 		= 1<<1,		// this tag passes visiblity conditions, although it still might not be visible due to tag limit
+	CLEANUP 			= 1<<2,		// irreversible cleanup
+	VISIBLE 			= 1<<3,		// tag visibility (can still be animating/fading when not visible)
+	DISABLED 			= 1<<4,		// reversible cleanup
+	DELETED 			= 1<<5,		// irreversible cleanup
+	UPDATE_DISABLE 		= 1<<6,		// tag is not visible, in the process of being disabled, update until transitions are finished
+	VEHICLE_DISABLE 	= 1<<7,		// reversible cleanup for vehicle which no longer contains passengers 
+	FADE_TIMER 			= 1<<8,		// run fade timer for obstruction check
+	OBSTRUCTED			= 1<<9,		// LOS trace result obstructed 
+	VEHICLE 			= 1<<10,	// tag owner is in a vehicle
+	TURRET 				= 1<<11,	// tag owner in in a turret which is not part of a vehicle
+	ENT_TYPE_UPDATE 	= 1<<12,	// request entity type update
+	NAME_UPDATE			= 1<<13		// request name update
+};
+
+//------------------------------------------------------------------------------------------------
+//! Determines which offset is used for setting tag position 
+enum ENameTagPosition
+{
+	HEAD = 0,
+	BODY
+};
+
+//------------------------------------------------------------------------------------------------
+//! Tag entity type
+enum ENameTagEntityType
+{
+	PLAYER,     // player character
+	AI,			// AI character
+	VEHICLE		// vehicle
+};
+
+//------------------------------------------------------------------------------------------------
+//! Nametag data
+class SCR_NameTagData : Managed
+{	
+	const string HEAD_BONE = "head";
+	const string SPINE_BONE = "Neck1";
+	const vector HEAD_OFFSET = "0 0.3 0";			// tag visual position offset for head
+	const vector BODY_OFFSET = "0 -0.1 0";			// tag visual position offset for body
+	
+	ENameTagFlags m_Flags;
+	ENameTagEntityState m_eEntityStateFlags;
+	ENameTagEntityState m_ePriorityEntityState;
+	ENameTagPosition m_eAttachedTo;
+	ENameTagPosition m_eAttachedToLast;
+	ENameTagEntityType m_eType;
+	
+	bool m_bIsCurrentPlayer;		// is controlled player
+	int m_iZoneID;					// nametag zone ID
+	int m_iGroupID;
+	int m_iPlayerID;
+	int m_iSpineBone;
+	int m_iHeadBone;
+	float m_fTimeSliceUpdate;		// timed update for distance/trace checks, start at 1 for initial update
+	float m_fTimeSliceVON;			// delay before switching out of VON state
+	float m_fTimeSlicePosChange;	// for lerping when nametag position changes
+	float m_fTimeSliceCleanup;		// if tag is out of zone range for set amount of time, it will clean itself up
+	float m_fTimeSliceFade;			// measuring time between visibility traces to determine whether the tag should fade
+	float m_fTimeSliceVisibility;	// Slice for animation changes to visibility
+	float m_fDistance;				// distance from player to this entity, pow of 2 of the real distance for calculation purposes
+	float m_fOpacityFade;			// opacity fade based on distance, is value between 0.1-1 (percentage), a secondary effect to global opacity setting
+	float m_fVisibleOpacity = 1;	// cached default opacity
+	float m_fAngleToScreenCenter;	// angle between this entity and the center of the screen used for visibility limiting
+	vector m_vTagScreenPos;			// tag screen pos (2D) - in reference resolution (not screen size) values
+	vector m_vTagWorldPos;			// tag world pos (with offset)
+	vector m_vTagWorldPosLast;		// previous tag world pos for lerping 
+	vector m_vEntHeadPos;			// ent head pos, for LOS checks and head placement
+	vector m_vEntWorldPos;			// ent world pos, for visibility angle checks and body placement
+	string m_sName;					// entity name or name formatting
+	ref array<string> m_aNameParams;// Params for name formatting eg: Firstname, Alias (can be an empty string), Surname
+	
+	IEntity m_Entity;			
+	Widget m_NameTagWidget;										// tag visiblity setting is done on this level because setting it on root with negative values conflicts with render ZOrder
+	SCR_VehicleTagData m_VehicleParent;
+	SCR_CharacterControllerComponent m_CharController;
+	protected SCR_NameTagDisplay m_NTDisplay;
+	protected BaseCompartmentSlot m_VehicleCompartment; 		// vehicle compartment slot if entity is in a vehicle
+	protected SCR_GroupsManagerComponent m_GroupManager;
+	protected SCR_PossessingManagerComponent m_PossessingManager;
+	
+	// configurable data
+	float m_fDeadEntitiesCleanup;	
+	float m_fTagFadeSpeed;
+		
+					
+	ref Widget m_aNametagElements[10];	// nametag layout elements
+	//------------------------------------------------------------------------------------------------
+	//! Update the highest priority entity state (as ordered in enum)
+	void UpdatePriorityEntityState()
+	{
+		int flag = 1; 
+		int highestMatch = 1;
+		
+		for ( int i = 0; i < 31; i++ )
+		{
+			// Stop if impossibly high flag
+			if (m_eEntityStateFlags < flag)
+			{
+				m_ePriorityEntityState = highestMatch;
+				return;
+			}
+			
+			if (m_eEntityStateFlags & flag)
+				highestMatch = flag;
+			 				
+			flag = flag << 1;
+		}
+		
+		m_ePriorityEntityState = ENameTagEntityState.DEFAULT;
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! Add entity state flag
+	//! \param state is the flag to be added
+	void ActivateEntityState(ENameTagEntityState state)
+	{	
+		// flag NOT set
+		if (~m_eEntityStateFlags & state)
+		{
+			m_eEntityStateFlags |= state;
+			UpdatePriorityEntityState();
+			
+			m_NTDisplay.UpdateTagElements(this);
+		
+			// If dead, prep delayed callback for auto deactivation after a set time		
+			if (state == ENameTagEntityState.DEAD && ( ~m_Flags & ENameTagFlags.CLEANUP) )
+			{
+				m_Flags |= ENameTagFlags.CLEANUP;
+				SetTagPosition(ENameTagPosition.HEAD);
+				
+				ScriptCallQueue queue = GetGame().GetCallqueue();
+				if (!queue)
+					return;
+				
+				queue.CallLater(Cleanup, m_fDeadEntitiesCleanup * 1000, false, true);
+			}
+		}
+		
+		// VON screen fade after a set time, outside of the falg set condition to reset timer
+		if (state == ENameTagEntityState.VON )
+			m_fTimeSliceVON = 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Remove ENameTagEntityState flag
+	//! \param state is the flag to be removed
+	void DeactivateEntityState(ENameTagEntityState state)
+	{
+		// flag set
+		if (m_eEntityStateFlags & state)
+		{
+			m_eEntityStateFlags &= ~state;
+			UpdatePriorityEntityState();
+			
+			m_NTDisplay.UpdateTagElements(this);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set visibility of nametag widget
+	//! \param widget is the target widget
+	//! \param visible controls whether the widget should be made visible or invisible
+	//! \param animate controls if the widget should fade in/out 
+	void SetVisibility(Widget widget, bool visible, float visibleOpacity, bool animate = true)
+	{
+		if ( !widget )
+			return;
+						
+		float targetVal;
+		if (visible)
+		{
+			m_NameTagWidget.SetVisible(true);
+			if (widget == m_NameTagWidget)
+				m_fVisibleOpacity = visibleOpacity;
+			
+			m_Flags |= ENameTagFlags.VISIBLE;
+			m_Flags &= ~ENameTagFlags.UPDATE_DISABLE;
+			m_Flags &= ~ENameTagFlags.DISABLED;
+			targetVal = visibleOpacity;
+		}
+		else 
+			targetVal = 0;
+		
+		if (m_fTagFadeSpeed == 0)
+			animate = false;
+				
+		if (animate)
+			AnimateWidget.Opacity(widget, targetVal, m_fTagFadeSpeed);
+		else 
+		{
+			AnimateWidget.StopAnimation(widget, WidgetAnimationOpacity);
+			widget.SetOpacity(targetVal);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Resize nametag element
+	void ResizeElement(Widget widget, float targetVal)
+	{
+		float size[2] = {targetVal, targetVal};
+		AnimateWidget.Size(widget, size, m_fTagFadeSpeed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Determine type of nametag entity
+	void UpdateEntityType()
+	{
+		if (ChimeraCharacter.Cast(m_Entity))
+		{				
+			bool playerIDIsMainEnt = false;
+			
+			m_iPlayerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(m_Entity);
+			if (m_iPlayerID == 0 && m_PossessingManager)
+			{
+				m_iPlayerID = m_PossessingManager.GetIdFromMainEntity(m_Entity);	// in case this is a main entity of someone whos currently possessing, consider it that player
+				if (m_iPlayerID > 0)
+					playerIDIsMainEnt = true;
+			}
+			
+			if (m_iPlayerID > 0)
+			{
+				m_eType = ENameTagEntityType.PLAYER;
+				
+				if (!playerIDIsMainEnt && m_PossessingManager)
+				{
+					if (m_PossessingManager.IsPossessing(m_iPlayerID))		// possessed AI entity should keep its name
+						m_eType = ENameTagEntityType.AI;
+				}
+				
+				if (m_GroupManager)
+				{
+					SCR_AIGroup group = m_GroupManager.GetPlayerGroup(m_iPlayerID);
+					SetGroup(group);
+				}
+			}
+			else 	// non players are considered AI
+			{
+				m_eType = ENameTagEntityType.AI;
+				CheckAISubordinate(m_Entity);				
+			}
+		}
+		else if (Vehicle.Cast(m_Entity))
+		{
+			m_eType = ENameTagEntityType.VEHICLE;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get/update nametag name
+	//! \param[out] name Name or formatting of name
+	//! \param[out] names If uses formating: Firstname, Alias and Surname (Alias can be an empty string)
+	void GetName(out string name, out notnull array<string> nameParams)
+	{		
+		if (m_eType == ENameTagEntityType.PLAYER)
+		{
+			PlayerManager playerMgr = GetGame().GetPlayerManager();
+			if (playerMgr)
+				m_sName = playerMgr.GetPlayerName(m_iPlayerID);
+			else 
+				m_sName = "No player manager!"
+		}
+		else if (m_eType == ENameTagEntityType.AI)
+		{
+			SCR_CharacterIdentityComponent scrCharIdentity = SCR_CharacterIdentityComponent.Cast(m_Entity.FindComponent(SCR_CharacterIdentityComponent));
+			if (scrCharIdentity)
+			{
+				scrCharIdentity.GetFormattedFullName(m_sName, m_aNameParams);
+			}
+			else
+			{
+				CharacterIdentityComponent charIdentity = CharacterIdentityComponent.Cast(m_Entity.FindComponent(CharacterIdentityComponent));
+				if (charIdentity && charIdentity.GetIdentity())
+					m_sName = charIdentity.GetIdentity().GetName();
+				else 
+					m_sName = "No character identity!";
+			}
+		}
+		
+		name = m_sName;
+		nameParams.Copy(m_aNameParams);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set what is the nametag position attached to
+	//! \param pos is the new tag position
+	//! \param gradualChange controls whether the position change will be instant (false) or gradually lerped
+	void SetTagPosition(ENameTagPosition pos, bool gradualChange = true)
+	{
+		m_eAttachedTo = pos;
+		m_fTimeSlicePosChange = 0;
+		m_vTagWorldPosLast = m_vTagWorldPos;
+		
+		if (!gradualChange)
+			m_eAttachedToLast = pos;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set group state if it matches with current player group
+	void SetGroup(SCR_AIGroup group)
+	{
+		if (group)
+		{
+			m_iGroupID = group.GetGroupID();
+			if (m_bIsCurrentPlayer)
+			{
+				m_NTDisplay.CleanupAllTags();	// cleanup other tags because we need to compare groups again
+				return;
+			}
+		
+			if (m_NTDisplay.m_CurrentPlayerTag.m_iGroupID == m_iGroupID)
+				ActivateEntityState(ENameTagEntityState.GROUP_MEMBER);
+		}
+		else
+		{
+			m_iGroupID = -1;
+			if (m_eEntityStateFlags & ENameTagEntityState.GROUP_MEMBER)
+				DeactivateEntityState(ENameTagEntityState.GROUP_MEMBER);
+			
+			if (m_bIsCurrentPlayer)
+				m_NTDisplay.CleanupAllTags();
+		}
+		
+		if (m_VehicleParent && m_VehicleParent.m_MainTag == this)	// update vehicle parent as well if this tag is its main tag
+			m_VehicleParent.m_Flags |= ENameTagFlags.NAME_UPDATE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set AI_SUBORDINATE if it falls under current players command
+	void CheckAISubordinate(IEntity entity)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(entity);
+		if (!entity)
+			return;
+		
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+		
+		int playerID = GetGame().GetPlayerController().GetPlayerId();
+		SCR_AIGroup playerGroup = groupManager.GetPlayerGroup(playerID);
+		
+		if (!playerGroup || !playerGroup.IsAIControlledCharacterMember(character))
+		{
+			DeactivateEntityState(ENameTagEntityState.AI_SUBORDINATE);
+			return;
+		}
+		
+		ActivateEntityState(ENameTagEntityState.AI_SUBORDINATE);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Add this tag as occupant to a vehicle tag
+	protected void AddAsVehicleOccupant(IEntity vehicle, BaseCompartmentSlot slot, ENameTagFlags flag)
+	{
+		m_Flags |= flag;
+		m_VehicleCompartment = slot;
+		m_NTDisplay.OnNewVehicleOccupant(vehicle, this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Remove this tag as occupant to a vehicle tag
+	void RemoveVehicleOccupant(IEntity vehicle)
+	{
+		m_NTDisplay.OnLeaveVehicleOccupant(vehicle, this);
+		m_VehicleCompartment = null;
+		m_Flags &= ~ENameTagFlags.VEHICLE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_CompartmentAccessComponent event
+	void OnVehicleEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
+	{	
+		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
+		if (!compSlot)
+			return;
+	
+		IEntity occupant = compSlot.GetOccupant();	// only add if the added entity is the owner of this tag
+		if (occupant != m_Entity)
+			return;
+		
+		while (vehicle)		// compartments such as turrets have vehicles as parents
+		{
+			if (Vehicle.Cast(vehicle))
+			{
+				AddAsVehicleOccupant(vehicle, compSlot, ENameTagFlags.VEHICLE);
+				break;
+			}
+			else if (Turret.Cast(vehicle) && !vehicle.GetParent())	// f.e. deployed machinegun position can be a turret without parent vehicle
+			{
+				m_Flags |= ENameTagFlags.TURRET;
+				break;
+			}
+			else
+				vehicle = vehicle.GetParent();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_CompartmentAccessComponent event
+	void OnVehicleLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
+	{		
+		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
+		
+		if (compSlot != m_VehicleCompartment)			// only remove if the comp slot subject is this tag's compartment
+			return;
+				
+		while (vehicle)
+		{
+			if (Vehicle.Cast(vehicle))
+			{
+				RemoveVehicleOccupant(vehicle);
+				break;
+			}
+			else if (Turret.Cast(vehicle) && !vehicle.GetParent())	// f.e. deployed machinegun position can be a turret without parent vehicle
+			{
+				m_Flags &= ~ENameTagFlags.TURRET;
+				break;
+			}
+			else 
+				vehicle = vehicle.GetParent();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! VoNComponent event, only used for "Current player" tag
+	void OnReceivedVON(int playerId, BaseTransceiver receiver, int frequency, float quality)
+	{				
+		IEntity character = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
+		if (!character)
+			return;
+		
+		SCR_NameTagData data = m_NTDisplay.GetEntityNameTag(character);
+		if (data)
+		{
+			data.ActivateEntityState(ENameTagEntityState.VON);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_CharacterController event
+	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
+	{
+		if (newLifeState == ECharacterLifeState.INCAPACITATED)
+			ActivateEntityState(ENameTagEntityState.UNCONSCIOUS);
+		else
+			DeactivateEntityState(ENameTagEntityState.UNCONSCIOUS);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Cleanup
+	//! \param removeFromArray determines whether the tag is removed from main array, this is not desired when entrire array is being cleaned up
+	void Cleanup(bool removeFromArray = true)
+	{
+		m_Flags |= ENameTagFlags.DELETED;
+		
+		if (m_NTDisplay)
+			m_NTDisplay.CleanupTag(this, removeFromArray);
+		
+		ScriptCallQueue queue = GetGame().GetCallqueue();	// in case this was already set for timed cleanup
+		if (queue)
+			queue.Remove(Cleanup);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Initial check of active states for JIP
+	//!	/return false if invalid/should be cleaned up
+	protected bool UpdateEntityStateFlags()
+	{
+		m_Flags = ENameTagFlags.DISABLED | ENameTagFlags.NAME_UPDATE;	// this has a default flag because if tag never reaches a visibile state, it needs a disable flag for clean up
+				
+		if (m_GroupManager)
+		{
+			SCR_AIGroup group = m_GroupManager.GetPlayerGroup(m_iPlayerID);
+			SetGroup(group);
+		}
+		
+		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(m_Entity.FindComponent(SCR_CompartmentAccessComponent));	// in vehicle
+		if (compartmentAccess && compartmentAccess.IsInCompartment())
+		{
+			IEntity vehicle;
+			BaseCompartmentSlot compSlot = compartmentAccess.GetCompartment();
+			if (compSlot)
+				vehicle = compSlot.GetOwner();
+			
+			while (vehicle)		// compartments such as turrets have vehicles as parents
+			{
+				if (Vehicle.Cast(vehicle))
+				{
+					AddAsVehicleOccupant(vehicle, compSlot, ENameTagFlags.VEHICLE);
+					break;
+				}
+				else if (Turret.Cast(vehicle) && !vehicle.GetParent())	// f.e. deployed machinegun position can be a turret without parent vehicle
+				{
+					m_Flags |= ENameTagFlags.TURRET;
+					break;
+				}
+				else 
+				{
+					vehicle = vehicle.GetParent();
+				}
+			}
+		}	
+				
+		if (m_CharController && m_CharController.IsUnconscious())
+			ActivateEntityState(ENameTagEntityState.UNCONSCIOUS);
+			
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Update tag position
+	void UpdateTagPos()
+	{		
+		vector matPos[4];
+		Animation anim = m_Entity.GetAnimation();
+		anim.GetBoneMatrix(m_iSpineBone, matPos);
+		m_vEntWorldPos = m_Entity.CoordToParent(matPos[3]);
+		anim.GetBoneMatrix(m_iHeadBone, matPos);
+		m_vEntHeadPos = m_Entity.CoordToParent(matPos[3]);
+		
+		if (m_eAttachedTo == ENameTagPosition.HEAD)
+		{
+			m_vTagWorldPos = m_vEntHeadPos + HEAD_OFFSET;
+		}
+		else if (m_eAttachedTo == ENameTagPosition.BODY)
+		{
+			m_vTagWorldPos = m_vEntWorldPos + BODY_OFFSET;
+		}
+
+		if (m_eType != ENameTagEntityType.PLAYER && GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(m_Entity) > 0)
+		{
+			m_Flags |= ENameTagFlags.ENT_TYPE_UPDATE;
+			m_Flags |= ENameTagFlags.NAME_UPDATE;
+		}
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! Init default tag data
+	protected void InitDefaults()
+	{
+		m_eEntityStateFlags = ENameTagEntityState.HIDDEN | ENameTagEntityState.DEFAULT;
+	 	m_ePriorityEntityState = ENameTagEntityState.HIDDEN;
+		m_eAttachedTo = ENameTagPosition.HEAD;
+		m_eAttachedToLast = ENameTagPosition.HEAD;
+		
+		m_iZoneID = -1;
+		m_iGroupID = -1;
+		m_iPlayerID = -1;
+		m_fTimeSliceUpdate = 1.0;
+		m_fTimeSliceVON = 0;
+		m_fTimeSlicePosChange = 0;
+		m_fTimeSliceCleanup = 0;
+		m_fTimeSliceFade = 0;
+		m_fTimeSliceVisibility = 0;
+		m_fDistance = 0;
+		m_fOpacityFade = 1;
+		m_sName = string.Empty;
+		m_aNameParams = {};
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Init configurable data
+	protected void InitData(SCR_NameTagConfig config)
+	{
+		// configurables
+		if (m_NTDisplay)
+		{
+			SCR_NameTagRulesetBase ruleset = config.m_aVisibilityRuleset;
+			
+			m_fDeadEntitiesCleanup = ruleset.m_fDeadEntitiesCleanup;
+			
+			if (ruleset.m_fTagFadeTime == 0)
+				m_fTagFadeSpeed = 0;
+			else
+				m_fTagFadeSpeed = 1/ruleset.m_fTagFadeTime; // convert multiplier to seconds
+		}
+		
+		UpdateEntityType();
+		
+		if (ChimeraCharacter.Cast(m_Entity))
+		{				
+			// Vehicle enter/leave event
+			SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast( m_Entity.FindComponent(SCR_CompartmentAccessComponent) );
+			if (accessComp)
+			{
+				accessComp.GetOnCompartmentEntered().Insert(OnVehicleEntered);
+				accessComp.GetOnCompartmentLeft().Insert(OnVehicleLeft);
+			}
+		}
+
+		if (m_Entity)
+		{
+			
+			m_iSpineBone = m_Entity.GetAnimation().GetBoneIndex(SPINE_BONE);
+			m_iHeadBone = m_Entity.GetAnimation().GetBoneIndex(HEAD_BONE);
+		}
+		
+		GetName(m_sName, m_aNameParams);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Init nametag data class, the widget is held and reused, data has to be reinitialized 
+	//! \param display is nametag info display
+	//! \param entity is nametag subject
+	//! \return false if nametag is not valid and should be cleaned up
+	bool InitTag(SCR_NameTagDisplay display, IEntity entity, SCR_NameTagConfig config, bool IsCurrentPlayer = false)
+	{		
+		m_bIsCurrentPlayer = IsCurrentPlayer;
+		m_Entity = entity;
+		m_NTDisplay = display;
+		
+		ChimeraCharacter ent = ChimeraCharacter.Cast(entity);
+		if (ent)
+		{
+			m_CharController = SCR_CharacterControllerComponent.Cast(ent.FindComponent(SCR_CharacterControllerComponent));
+			if (!m_CharController || m_CharController.IsDead())
+				return false;	
+			
+			m_CharController.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
+			
+			if (m_bIsCurrentPlayer)		// we only need VON received event for current player to set VON status icons
+			{
+				SCR_VoNComponent vonComp = SCR_VoNComponent.Cast( ent.FindComponent(SCR_VoNComponent) );
+				if (vonComp)
+					vonComp.m_OnReceivedVON.Insert(OnReceivedVON);
+			}
+		}
+			
+		InitDefaults();			
+		InitData(config);
+				
+		if (!UpdateEntityStateFlags())
+			return false;
+	
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Uninitialize class when its being moved to unsued tags in order to be reused
+	void ResetTag()
+	{
+		if (m_CharController)
+			m_CharController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
+		
+		if (m_bIsCurrentPlayer && m_Entity)
+		{
+			SCR_VoNComponent vonComp = SCR_VoNComponent.Cast( m_Entity.FindComponent(SCR_VoNComponent) );
+			if (vonComp)
+				vonComp.m_OnReceivedVON.Remove(OnReceivedVON);
+		}
+		
+		if (ChimeraCharacter.Cast(m_Entity))
+		{				
+			// Vehicle enter/leave event
+			SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast( m_Entity.FindComponent(SCR_CompartmentAccessComponent) );
+			if (accessComp)
+			{
+				accessComp.GetOnCompartmentEntered().Remove(OnVehicleEntered);
+				accessComp.GetOnCompartmentLeft().Remove(OnVehicleLeft);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_NameTagData(ResourceName layout, Widget rootWidget)
+	{				
+		m_NameTagWidget = GetGame().GetWorkspace().CreateWidgets(layout, rootWidget);
+		if (m_NameTagWidget)	
+			m_NameTagWidget.SetVisible(false);
+		
+		m_GroupManager = SCR_GroupsManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_GroupsManagerComponent));
+		m_PossessingManager = SCR_PossessingManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_PossessingManagerComponent));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_NameTagData()
+	{
+		ResetTag();
+	}
+};
+
+
+

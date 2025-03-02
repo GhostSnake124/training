@@ -1,0 +1,4370 @@
+void SCR_HintManagerComponent_OnHint(SCR_HintUIInfo info, bool isSilent);
+typedef func SCR_HintManagerComponent_OnHint;
+
+[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "")]
+class SCR_HintManagerComponentClass : SCR_BaseGameModeComponentClass
+{
+	[Attribute()]
+	protected ref array<ref SCR_HintConditionList> m_aConditionLists;
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	void InitConditionLists(IEntity owner)
+	{
+		for (int i, count = m_aConditionLists.Count(); i < count; i++)
+		{
+			m_aConditionLists[i].Init(owner);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	void ExitConditionLists(IEntity owner)
+	{
+		for (int i, count = m_aConditionLists.Count(); i < count; i++)
+		{
+			m_aConditionLists[i].Exit(owner);
+		}
+	}
+}
+
+class SCR_HintManagerComponent : SCR_BaseGameModeComponent
+{
+	[Attribute("4")]
+	protected float m_fDefaultDuration;
+	
+	[Attribute("1", desc: "Mark the hint as shown only if it was display for this duration (seconds).\nIf the hint duration is shorter, mark it as shown when it's hidden.")]
+	protected float m_fPersistentDelay;
+	
+	[Attribute("0", desc: "When enabled, hints will be shown in this scenario even when they're disabled in game settings.\nUseful for tutorial scenarios.")]
+	protected bool m_bIgnoreHintSettings;
+	
+	protected bool m_bIsShown;
+	protected float m_fDurationOverride;
+	protected SCR_HintUIInfo m_LatestHint;
+	protected BaseContainer m_SettingsContainer;
+	protected ref SCR_HintSettings m_Settings;
+	protected ref SCR_HintUIInfo m_CustomHint; //--- Strong reference to hint info created in run-time from texts
+	protected ref set<EHint> m_aSessionShownHints = new set<EHint>();
+	protected ref ScriptInvokerBase<SCR_HintManagerComponent_OnHint> m_OnHintShow = new ScriptInvokerBase<SCR_HintManagerComponent_OnHint>();
+	protected ref ScriptInvokerBase<SCR_HintManagerComponent_OnHint> m_OnHintHide = new ScriptInvokerBase<SCR_HintManagerComponent_OnHint>();
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	//--- Public functions
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! Show hint based on existing configuration.
+	//! \param[in] info Hint UI info
+	//! \param[in] isSilent True to show the hint without any sound effect
+	//! \param[in] ignoreShown When true, the hint will be shown even if it was shown previously
+	//! \return True if the hint was shown
+	bool Show(SCR_HintUIInfo info, bool isSilent = false, bool ignoreShown = false)
+	{
+		//--- Ignore if hints are disabled in gameplay settings (not for sequence hints, because they're triggered manually)
+		if ((!CanShow() || (!ignoreShown && WasShown(info))) && !info.IsInSequence())
+			return false;
+		
+		//--- Ignore if the new hint has lower priority than the current one
+		if (m_bIsShown && m_LatestHint)
+		{
+			if (info.GetPriority() < m_LatestHint.GetPriority())
+				return false;
+		}
+		
+		//--- Check if timer is visible, if yes, set the timestamp of start.
+		
+		if (info.IsTimerVisible())
+		{
+			info.SetTimeStamp();
+		}
+		
+		//--- Always silent when refreshing the same hint
+		isSilent |= m_bIsShown && info == m_LatestHint;
+		
+		//--- Hide current hint (need to call associated event)
+		Hide();
+		
+		//--- Set new current hint
+		m_bIsShown = true;
+		m_LatestHint = info;
+		
+		//--- Call an event for GUI systems which will actually show the hint (no GUI here!)
+		m_OnHintShow.Invoke(info, isSilent);
+		
+		//--- Set duration (only when the value is *not* negative, which means endless hint)
+		float duration;
+		if (m_fDurationOverride != 0)
+			duration = m_fDurationOverride;
+		else
+			duration = info.GetDuration();
+		
+		GetGame().GetCallqueue().Remove(Hide);
+		if (duration >= 0)
+		{
+			//--- Use default duration when the value is 0
+			if (duration == 0)
+				duration = m_fDefaultDuration;
+			
+			GetGame().GetCallqueue().CallLater(Hide, duration * 1000, false, info);
+		}
+		
+		//--- Mark the hint as shown after a delay (multiple hints may be triggered on the same frame, delay will make sure only the actually shown one will be saved)
+		GetGame().GetCallqueue().Remove(SetShown);
+		int type = info.GetType();
+		if (type > 0)
+		{
+			//--- Make sure the delay is shorter than duration
+			float delay = m_fPersistentDelay;
+			if (duration > 0)
+				delay = Math.Min(delay, duration);
+			
+			GetGame().GetCallqueue().CallLater(SetShown, delay * 1000, false, info);
+		}
+		
+		//info.Log("SCR_HintManagerComponent.Show: ");
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Show hint made of custom texts.
+	//!
+	//! *************************************************************************************************
+	//! ## WARNING! ##
+	//!
+	//! Use only for quick debugging.
+	//! For legit use, please configure the hint as SCR_UIInfo attribute on your entity/component/config!
+	//! That will allow you to set all hint properties, as well as to localize it using LocParserPlugin.
+	//!
+	//! *************************************************************************************************
+	//!
+	//! \param[in] description Hint text
+	//! \param[in] name Hint title
+	//! \param[in] duration For how long should the hint be shown (in seconds)
+	//! \param[in] isSilent True to show the hint without any sound effect
+	//! \param[in] type Hint type. When defined, the hint will be shown only once and never again.
+	//! \return True if the hint was shown
+	//!
+	bool ShowCustom(string description, string name = string.Empty, float duration = 0, bool isSilent = false, EHint type = EHint.UNDEFINED, EFieldManualEntryId fieldManualEntry = EFieldManualEntryId.NONE, bool isTimerVisible = false)
+	{
+		m_CustomHint = SCR_HintUIInfo.CreateInfo(description, name, duration, type, fieldManualEntry, isTimerVisible);
+		return Show(m_CustomHint, isSilent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+	bool ClearHint()
+	{
+		if(m_LatestHint)
+		{
+			m_LatestHint = null;
+			return true;
+		}
+		else
+			return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Repeat previously shown hint.
+	//! \param[in] isSilent
+	//! \return True if the hint was shown
+	bool Repeat(bool isSilent = false)
+	{
+		if (m_LatestHint)
+			return Show(m_LatestHint, isSilent, true);
+		else
+			return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Silently refresh currently shown hint.
+	//! \return True if the hint was refreshed
+	bool Refresh()
+	{
+		if (m_bIsShown)
+			return Show(m_LatestHint, true, true);
+		else
+			return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Hide currently shown hint.
+	//! \param[in] info When defined, clear only this hint. If other hint is shown, do nothing.
+	//! \return True if a hint was cleared
+	bool Hide(SCR_HintUIInfo info = null)
+	{
+		//--- Nothing to clear
+		if (!m_bIsShown)
+			return false;
+		
+		//--- Check if it's the hint passed in a param
+		if (info && info != m_LatestHint)
+			return false;
+		
+		GetGame().GetCallqueue().Remove(Hide);
+		
+		m_bIsShown = false;
+		m_OnHintHide.Invoke(m_LatestHint, false);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Toggle hint. Hide it if it's shown, and open it again if it's hidden.
+	void Toggle()
+	{
+		if (m_Settings && !m_Settings.AreHintsEnabled())
+			return;
+		
+		if (IsShown())
+			Hide();
+		else
+			Repeat();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Open context to currently shown hint.
+	void OpenContext()
+	{
+		if (!IsShown() || !m_LatestHint || (m_Settings && !m_Settings.AreHintsEnabled()))
+			return;
+		
+		EFieldManualEntryId link = m_LatestHint.GetFieldManualLink();
+		if (link != EFieldManualEntryId.NONE)
+			SCR_FieldManualUI.Open(link);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the most recent hint.
+	//! \return Hint UI info
+	SCR_HintUIInfo GetLatestHint()
+	{
+		return m_LatestHint;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get thecurrently shown hint.
+	//! \return Hint UI info
+	SCR_HintUIInfo GetCurrentHint()
+	{
+		if (m_bIsShown)
+			return m_LatestHint;
+		else
+			return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if a hint is shown at this moment.
+	//! \return True when shown
+	bool IsShown()
+	{
+		return m_bIsShown;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if hints are enabled in gameplay settings.
+	//! \return True when enabled
+	bool CanShow()
+	{
+		return m_bIgnoreHintSettings || !m_Settings || m_Settings.AreHintsEnabled();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if hint type was shown previously (even in previous game sessions; the information is stored persistently).
+	//! \param[in] hint Hint type
+	//! \param[in] limit How many times can the hint be shown
+	//! \return True when shown
+	bool WasShown(EHint hint, int limit = 1)
+	{
+		return hint > 0 //--- Is type defined (hints without type are never remembered)?
+				&& (
+					(m_Settings && m_Settings.GetCount(hint) >= limit //--- How many times was the hint shown across instances?
+					|| m_aSessionShownHints.Contains(hint)) //--- Was the hint shown in this instance?
+				)
+				&& !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_HINT_IGNORE_SHOWN); //--- Is debug mode suppressing this check?
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if hint info was shown previously (even in previous game sessions; the information is stored persistently).
+	//! \return True when shown
+	bool WasShown(SCR_HintUIInfo info)
+	{
+		return info && WasShown(info.GetType(), info.GetShowLimit());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override hint duration.
+	//! \param[in] duration. When 0, override is reset.
+	void SetDurationOverride(float duration)
+	{
+		m_fDurationOverride = duration;
+	}
+	//------------------------------------------------------------------------------------------------
+	//! Get override of hint duration.
+	//! \return Duration. When 0, no override is active.
+	float GetDurationOverride()
+	{
+		return m_fDurationOverride;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the event called when a hint is shown.
+	//! \return Script invoker
+	ScriptInvokerBase<SCR_HintManagerComponent_OnHint> GetOnHintShow()
+	{
+		return m_OnHintShow;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the event called when a hint is hidden.
+	//! \return Script invoker
+	ScriptInvokerBase<SCR_HintManagerComponent_OnHint> GetOnHintHide()
+	{
+		return m_OnHintHide;
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	//--- Static functions
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! Get instance of the hint manager.
+	//! \return Hint manager
+	static SCR_HintManagerComponent GetInstance()
+	{
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (gameMode)
+			return SCR_HintManagerComponent.Cast(gameMode.FindComponent(SCR_HintManagerComponent));
+		else
+			return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Show hint based on existing configuration.
+	//! \param[in] info Hint UI info
+	//! \param[in] isSilent True to show the hint without any sound effect
+	//! \param[in] ignoreShown When true, the hint will be shown even if it was shown previously
+	//! \return True if the hint was shown
+	static bool ShowHint(SCR_HintUIInfo info, bool isSilent = false, bool ignoreShown = false)
+	{
+		SCR_HintManagerComponent hintManager = GetInstance();
+		if (hintManager)
+			return hintManager.Show(info, isSilent, ignoreShown);
+		else
+			return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Show hint made of custom texts.
+	//!
+	//! *************************************************************************************************
+	//! ## WARNING! ##
+	//!
+	//! Use only for quick debugging.
+	//! For legit use, please configure the hint as SCR_UIInfo attribute on your entity/component/config!
+	//! That will allow you to set all hint properties, as well as to localize it using LocParserPlugin.
+	//!
+	//! *************************************************************************************************
+	//!
+	//! \param[in] description Hint text
+	//! \param[in] name Hint title
+	//! \param[in] duration For how long should the hint be shown (in seconds)
+	//! \param[in] isSilent True to show the hint without any sound effect
+	//! \return True if the hint was shown
+	//!
+	static bool ShowCustomHint(string description, string name = string.Empty, float duration = 0, bool isSilent = false, EFieldManualEntryId fieldManualEntry = EFieldManualEntryId.NONE, bool isTimerVisible = false)
+	{
+		SCR_HintManagerComponent hintManager = GetInstance();
+		if (hintManager)
+			return hintManager.ShowCustom(description, name, duration, isSilent, EHint.UNDEFINED, fieldManualEntry, isTimerVisible);
+		else
+			return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Clear the last used hint so it no longer shows.
+	static bool ClearLatestHint()
+	{
+		SCR_HintManagerComponent hintManager = GetInstance();
+		if (hintManager)
+			return hintManager.ClearHint();
+		else
+			return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Repeat previously shown hint.
+	//! \param[in] isSilent
+	//! \return True if the hint was shown
+	static bool RepeatHint(bool isSilent = false)
+	{
+		SCR_HintManagerComponent hintManager = GetInstance();
+		if (hintManager)
+			return hintManager.Repeat(isSilent);
+		else
+			return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Clear currently shown hint.
+	//! \param[in] info When defined, clear only this hint. If other hint is shown, do nothing.
+	//! \return True if a hint was cleared
+	static bool HideHint(SCR_HintUIInfo info = null)
+	{
+		SCR_HintManagerComponent hintManager = GetInstance();
+		if (hintManager)
+			return hintManager.Hide(info);
+		else
+			return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if a hint is shown at this moment.
+	//! \return True when shown
+	static bool IsHintShown()
+	{
+		SCR_HintManagerComponent hintManager = GetInstance();
+		if (hintManager)
+			return hintManager.IsShown();
+		else
+			return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if hints are enabled in gameplay settings.
+	//! \return True when enabled
+	static bool CanShowHints()
+	{
+		SCR_HintManagerComponent hintManager = GetInstance();
+		if (hintManager)
+			return hintManager.CanShow();
+		else
+			return false;
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	//--- Protected functions
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	protected void LoadSettings()
+	{
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (!hudManager)
+			return;
+		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
+		if (!interfaceSettings)
+			return;
+		
+		bool state;
+		interfaceSettings.Get("m_bShowHints", state);
+
+		m_SettingsContainer = GetGame().GetGameUserSettings().GetModule("SCR_HintSettings");
+		m_Settings.SetHintsEnabled(state);
+		m_Settings.LoadShownHints(m_SettingsContainer);
+		
+		if (m_bIsShown && !m_Settings.AreHintsEnabled())
+			Hide();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetShown(SCR_HintUIInfo info)
+	{
+		if (!info || WasShown(info) || DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_HINT_IGNORE_SHOWN))
+			return;
+		
+		EHint type = info.GetType();
+		m_aSessionShownHints.Insert(type);
+		int count = m_Settings.AddCount(type);
+		m_Settings.SaveShownHints(m_SettingsContainer);
+		
+		Print(string.Format("Hint %1 = %2 saved persistently, count = %3.", typename.EnumToString(EHint, type), type, count), LogLevel.VERBOSE);
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	//--- Default functions
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	override void OnPostInit(IEntity owner)
+	{
+		if (System.IsConsoleApp())
+			return;
+		
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_HINT_IGNORE_SHOWN, "", "Ignore hint persistency", "UI");
+		
+		if (SCR_Global.IsEditMode(owner))
+			return;
+		
+		//--- Call only for the owner, not server (disabled, called before ownership is transferred)
+		//RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+		//if (rplComponent && !rplComponent.IsOwner())
+		//	return;
+		
+		SCR_HintManagerComponentClass componentPrefab = SCR_HintManagerComponentClass.Cast(GetComponentData(owner));
+		componentPrefab.InitConditionLists(owner);
+		
+		m_Settings = new SCR_HintSettings();
+		
+		// Call later so the HUDManager gets Initialized first and doesn't return null	
+		GetGame().GetCallqueue().Call(LoadSettings);	
+		GetGame().OnUserSettingsChangedInvoker().Insert(LoadSettings);
+		
+		GetGame().GetInputManager().AddActionListener("HintToggle", EActionTrigger.DOWN, Toggle);
+		GetGame().GetInputManager().AddActionListener("HintContext", EActionTrigger.DOWN, OpenContext);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{		
+		if (System.IsConsoleApp())
+			return;
+		
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_HINT_IGNORE_SHOWN);
+		
+		SCR_HintManagerComponentClass componentPrefab = SCR_HintManagerComponentClass.Cast(GetComponentData(owner));
+		componentPrefab.ExitConditionLists(owner);
+		
+		GetGame().OnUserSettingsChangedInvoker().Remove(LoadSettings);
+		
+		GetGame().GetInputManager().RemoveActionListener("HintToggle", EActionTrigger.DOWN, Toggle);
+		GetGame().GetInputManager().RemoveActionListener("HintContext", EActionTrigger.DOWN, OpenContext);
+	}
+}
+
+[EntityEditorProps(category: "GameScripted/UI/Inventory", description: "[MOD] Inventory Slot UI class")]
+class SCR_InventoryStorageManagerComponentClass : ScriptedInventoryStorageManagerComponentClass
+{
+}
+
+enum EInventoryRetCode
+{
+	RETCODE_OK = 0,
+	RETCODE_ITEM_TOO_BIG = 2,
+	RETCODE_ITEM_TOO_HEAVY = 4,
+	RETCODE_DEFAULT_STATE = 0xFFFF
+}
+
+enum ECallbackState
+{
+	DROP = 0,
+	INSERT = 1,
+	MOVE = 2,
+	DELETE = 3,
+	FINAL = 4
+}
+
+enum EResupplyUnavailableReason
+{
+	//~ If multiple reasons for Resupply Unavailable than the Highst enum will be used
+	NONE,
+	NO_VALID_WEAPON = 10,
+	ENOUGH_ITEMS = 20,
+	NOT_IN_GIVEN_STORAGE = 30,
+	INVENTORY_FULL = 40,
+
+	//~ Resupply was valid. Add invalid reasons above
+	RESUPPLY_VALID = 99999,
+}
+
+class SCR_HoldableItemPredicate : InventorySearchPredicate
+{
+    ECommonItemType wanted;
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	void SCR_HoldableItemPredicate()
+	{
+        QueryAttributeTypes.Insert(SCR_ItemOfInterestAttribute);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+        SCR_ItemOfInterestAttribute optionalAttribute = SCR_ItemOfInterestAttribute.Cast(queriedAttributes[0]);
+		return optionalAttribute.GetInterestType() == wanted;
+	}
+}
+
+class SCR_BandagePredicate : InventorySearchPredicate
+{
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	void SCR_BandagePredicate()
+	{
+		QueryComponentTypes.Insert(SCR_ConsumableItemComponent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{		
+		return (SCR_ConsumableItemComponent.Cast(queriedComponents[0])).GetConsumableType() == SCR_EConsumableType.BANDAGE;
+	}
+}
+
+class SCR_ApplicableMedicalItemPredicate : InventorySearchPredicate
+{
+	IEntity characterEntity;
+	ECharacterHitZoneGroup hitZoneGroup;
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	void SCR_ApplicableMedicalItemPredicate()
+	{
+		QueryComponentTypes.Insert(SCR_ConsumableItemComponent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		SCR_EConsumableType type = SCR_ConsumableItemComponent.Cast(queriedComponents[0]).GetConsumableType();
+		bool isMatch = (type == SCR_EConsumableType.BANDAGE)
+			|| (type == SCR_EConsumableType.HEALTH)
+			|| (type == SCR_EConsumableType.TOURNIQUET)
+			|| (type == SCR_EConsumableType.SALINE)
+			|| (type == SCR_EConsumableType.MORPHINE);
+
+		if (!isMatch)
+			return false;
+
+		SCR_ConsumableItemComponent medicalItem = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		SCR_ConsumableEffectHealthItems effect = SCR_ConsumableEffectHealthItems.Cast(medicalItem.GetConsumableEffect());
+		if (!effect)
+			return false;
+
+		return effect.CanApplyEffectToHZ(characterEntity, characterEntity, hitZoneGroup);
+	}
+}
+
+class SCR_ItemTypeSearchPredicate : InventorySearchPredicate
+{
+	int m_iItemType = -1;
+	IEntity m_iOriginalItem;
+	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] type
+	//! \param[in] wantedItemType
+	//! \param[in] originalItem
+	void SCR_ItemTypeSearchPredicate(typename type, int wantedItemType, IEntity originalItem)
+	{
+		QueryComponentTypes.Insert(type);
+		m_iItemType = wantedItemType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		return (item != m_iOriginalItem) && (SCR_CharacterInventoryStorageComponent.GetItemType(item) == m_iItemType);
+	}
+}
+
+class SCR_CommonItemTypeSearchPredicate : InventorySearchPredicate
+{
+	ECommonItemType m_eItemType = -1;
+	IEntity m_OriginalItem;
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] wantedItemType
+	//! \param[in] originalItem
+	void SCR_CommonItemTypeSearchPredicate(ECommonItemType wantedItemType, IEntity originalItem)
+	{
+		m_eItemType = wantedItemType;
+		m_OriginalItem = originalItem;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		InventoryItemComponent iic = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!iic || !iic.GetAttributes())
+			return false;
+
+		return (item != m_OriginalItem) && (iic.GetAttributes().GetCommonType() == m_eItemType);
+	}
+}
+
+//! Searches for attachments of the defined atttachmentType
+class SCR_CompatibleAttachmentPredicate : InventorySearchPredicate
+{
+	typename attachmentType;
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	void SCR_CompatibleAttachmentPredicate()
+	{
+		QueryComponentTypes.Insert(InventoryItemComponent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(queriedComponents[0]);
+
+		if (!itemComp)
+			return false;
+
+		ItemAttributeCollection itemAttributes = itemComp.GetAttributes();
+		if (!itemAttributes)
+			return false;
+
+		WeaponAttachmentAttributes itemAttribute = WeaponAttachmentAttributes.Cast(itemAttributes.FindAttribute(WeaponAttachmentAttributes));
+		if (!itemAttribute)
+			return false;
+
+		BaseAttachmentType itemAttachmentType = itemAttribute.GetAttachmentType();
+		if (!itemAttachmentType)
+			return false;
+
+		typename itemAttachmentTypename = itemAttachmentType.Type();
+		if (!itemAttachmentTypename)
+			return false;
+
+		return itemAttachmentTypename.IsInherited(attachmentType); // Check if attachment types match
+	}
+}
+
+class SCR_SalinePredicate : InventorySearchPredicate
+{
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	void SCR_SalinePredicate()
+	{
+		QueryComponentTypes.Insert(SCR_ConsumableItemComponent);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		if (storage.Type().IsInherited(EquipmentStorageComponent))
+			return true;
+		
+		return false;
+	}
+}
+
+//! Searches for magazines with certain mag well
+class SCR_MagazinePredicate : InventorySearchPredicate
+{
+	typename magWellType;
+	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	void SCR_MagazinePredicate()
+	{
+		QueryComponentTypes.Insert(BaseMagazineComponent);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		BaseMagazineComponent iMag = BaseMagazineComponent.Cast(queriedComponents[0]);
+		if (!iMag)
+			return false;
+		
+		BaseMagazineWell iMagWell = iMag.GetMagazineWell();
+		if (!iMagWell)
+			return false;
+		
+		return (iMagWell.IsInherited(magWellType)); // Check if magwells match
+	}
+}
+
+//! Searches for items with same prefab name
+class SCR_PrefabNamePredicate : InventorySearchPredicate
+{
+	string prefabName;
+	
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		EntityPrefabData pd = item.GetPrefabData();
+		return pd.GetPrefabName() == this.prefabName;
+	}
+}
+
+//! Searches for items with same prefab data (prefer this to prefab name if you have prefab data already)
+class SCR_PrefabDataPredicate : InventorySearchPredicate
+{
+	EntityPrefabData prefabData;
+	
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		return item.GetPrefabData() == this.prefabData;
+	}
+}
+
+class DropAndMoveOperationCallback : ScriptedInventoryOperationCallback
+{
+	InventoryItemComponent m_ItemBefore;
+	InventoryItemComponent m_ItemAfter;
+	InventoryStorageSlot m_TargetSlot;
+	SCR_InventoryStorageManagerComponent m_Manager;
+	SCR_InvCallBack m_FinalCB;
+	bool m_bIstakenFromArsenal;
+	bool m_bDeleteItemIfEmpty;
+	ref array<IEntity> m_aItemsToMove = {};
+	ECallbackState m_ECurrentState = 0; // 0 - drop, 1 - insert, 2 - move, 3 - delete, 4 - final
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void OnComplete()
+	{
+		switch (m_ECurrentState)
+		{
+			case ECallbackState.DROP:
+			{
+				OnDropComplete();
+			}
+			break;
+
+			case ECallbackState.INSERT:
+			{
+				OnInsertComplete();
+			}
+			break;
+
+			case ECallbackState.MOVE:
+			{
+				OnMoveComplete();
+			}
+			break;
+
+			case ECallbackState.DELETE:
+			{
+				OnDeleteComplete();
+			}
+			break;
+
+			case ECallbackState.FINAL:
+			{
+				OnFinalState();
+			}
+			break;
+		}
+	} 
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnDropComplete()
+	{
+		m_ECurrentState++;
+		m_Manager.TryMoveItemToStorage(m_ItemAfter.GetOwner(), m_TargetSlot.GetStorage(), m_TargetSlot.GetID(), this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnInsertComplete()
+	{
+		if (!m_bIstakenFromArsenal)
+		{
+			m_ECurrentState = ECallbackState.FINAL;
+			OnFinalState();
+			return;
+		} 
+		
+		m_ECurrentState++;
+		//BaseInventoryStorageComponent itemIsStorage = BaseInventoryStorageComponent.Cast(m_ItemBefore);
+		//m_Manager.GetAllItems(m_aItemsToMove, itemIsStorage);
+		OnMoveComplete();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMoveComplete()
+	{
+		// Temporarily disabled for performance reasons. Once it gets fixed the transfer of items can be reenabled.
+//		if (m_aItemsToMove.Count() == 0)
+//		{
+//			m_ECurrentState++;
+//			OnDeleteComplete();
+//			return;
+//		}
+//		IEntity item = m_aItemsToMove[m_aItemsToMove.Count() - 1];
+//		m_aItemsToMove.Resize(m_aItemsToMove.Count() - 1);
+//		BaseInventoryStorageComponent storage = m_Manager.FindStorageForItem(item, EStoragePurpose.PURPOSE_ANY);
+//		if (!m_Manager.TryMoveItemToStorage(item, storage, -1, this))
+//			OnMoveComplete();
+		
+		if (m_bDeleteItemIfEmpty)
+		{
+			m_ECurrentState++;
+			OnDeleteComplete();
+		}
+		else
+		{		
+			m_ECurrentState = ECallbackState.FINAL;
+			OnFinalState();
+		}
+			
+		return;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDeleteComplete()
+	{			
+		m_aItemsToMove.Clear();
+		BaseInventoryStorageComponent itemIsStorage = BaseInventoryStorageComponent.Cast(m_ItemBefore);
+		m_Manager.GetAllItems(m_aItemsToMove, itemIsStorage);
+			
+		if (m_aItemsToMove.IsEmpty())
+			m_Manager.AskServerToDeleteEntity(m_ItemBefore.GetOwner());
+		
+		OnFinalState();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnFinalState()	
+	{
+		if (m_FinalCB)
+			m_FinalCB.InternalComplete();
+	}
+}
+
+class SCR_ResupplyMagazinesCallback : ScriptedInventoryOperationCallback
+{
+	protected SCR_InventoryStorageManagerComponent m_Manager;
+	protected ref map<ResourceName, int> m_MagazinesToSpawn = new map<ResourceName, int>();
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] prefab
+	//! \param[in] count
+	void Insert(ResourceName prefab, int count)
+	{
+		int currentCount;
+		m_MagazinesToSpawn.Find(prefab, currentCount);
+		m_MagazinesToSpawn.Insert(prefab, currentCount + count);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void Start()
+	{
+		OnComplete();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void OnComplete()
+	{
+		if (!m_Manager)
+			return;
+		
+		if (!m_MagazinesToSpawn.IsEmpty())
+		{
+			//--- Next item to process
+			ResourceName prefab = m_MagazinesToSpawn.GetKey(0);
+			int count = m_MagazinesToSpawn.GetElement(0);
+			count--;
+			
+			if (count == 0)
+				m_MagazinesToSpawn.Remove(prefab);
+			else
+				m_MagazinesToSpawn.Set(prefab, count);
+			
+			m_Manager.TrySpawnPrefabToStorage(prefab, cb: this);
+		}
+		else
+		{
+			//--- All processed
+			OnFailed();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void OnFailed()
+	{
+		//--- Delete itself (after a delay - can't delete itself at this frame)
+		GetGame().GetCallqueue().CallLater(m_Manager.EndResupplyMagazines, 1, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] manager
+	void SCR_ResupplyMagazinesCallback(SCR_InventoryStorageManagerComponent manager)
+	{
+		m_Manager = manager;
+	}
+}
+
+class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComponent
+{
+	private SCR_CharacterInventoryStorageComponent				m_Storage;
+	private SCR_CharacterControllerComponent					m_CharacterController;
+	private	ref SCR_BandagePredicate 							m_BandagePredicate = new SCR_BandagePredicate();
+	protected EInventoryRetCode									m_ERetCode;
+	protected int												m_iHealthEquipment	=	0;
+	protected bool 												m_bIsInventoryLocked = false;
+	protected ref SCR_WeaponSwitchingBaseUI						m_pWeaponSwitchingUI;
+	private bool												m_bWasRaised;
+	private IEntity 											m_StorageToOpen;
+	protected ref SCR_ResupplyMagazinesCallback						m_ResupplyMagazineCallback;
+	
+	ref ScriptInvokerBool 									m_OnInventoryOpenInvoker	= new ScriptInvokerBool();
+	ref ScriptInvokerBool 									m_OnQuickBarOpenInvoker		= new ScriptInvokerBool();
+
+	//------------------------------------------------------------------------------------------------
+	//! Get an array of all root items in the inventory storage.
+	//! \param[out] rootItems All root items without going in the sub inventory of the items or attachments
+	//! \return Count of root items
+	int GetAllRootItems(out notnull array<IEntity> rootItems)
+	{
+		rootItems.Clear();
+		array<BaseInventoryStorageComponent> storages = {};
+		
+		//~ Get deposits like backpacks and jackets as well as any held weapons
+		GetStorages(storages, EStoragePurpose.PURPOSE_DEPOSIT);
+		GetStorages(storages, EStoragePurpose.PURPOSE_WEAPON_PROXY);
+		
+		array<IEntity> items = {};
+		array<BaseInventoryStorageComponent> clothStorages;
+		foreach (BaseInventoryStorageComponent storage : storages)
+		{
+			//~ If backpack or jacked or any other cloth storage only get what is inside the storage
+			if (ClothNodeStorageComponent.Cast(storage))
+			{
+				if (!storage)
+					continue;
+				
+				clothStorages = {};
+				storage.GetOwnedStorages(clothStorages, 1, false);
+			
+				foreach (BaseInventoryStorageComponent clothStorage : clothStorages)
+				{
+					if (!clothStorage)
+						continue;
+					
+					clothStorage.GetAll(items);
+					rootItems.Copy(items);
+				}
+				
+				continue;
+			}
+			else 
+			{
+				storage.GetAll(items);
+				rootItems.Copy(items);
+			}
+		}
+		
+		return rootItems.Count();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Callback when item is added (will be performed locally after server completed the Insert/Move operation)
+	override protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item)
+	{		
+		super.OnItemAdded(storageOwner, item);
+
+		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
+			m_iHealthEquipment++;	//store count of the health components
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Callback when item is removed (will be performed locally after server completed the Remove/Move operation)
+	override protected void OnItemRemoved(BaseInventoryStorageComponent storageOwner, IEntity item)
+	{
+		super.OnItemRemoved(storageOwner, item);
+
+		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
+			m_iHealthEquipment--;	//store count of the health components
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item)
+	{
+		//in case of health items, permit medics to donate healing items to targets
+		SCR_ConsumableItemComponent consumableItemComp = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if (consumableItemComp)
+			return false;
+		
+		if (m_CharacterController && m_CharacterController.GetLifeState() == ECharacterLifeState.ALIVE)
+			return true;
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] soundEvent
+	void PlayItemSound(IEntity entity, string soundEvent)
+	{	
+		if (!entity)
+			return;
+
+		RplComponent rplComp = RplComponent.Cast(entity.FindComponent(RplComponent));
+		if (rplComp)
+		{
+			Rpc(RpcAsk_PlaySound, rplComp.Id(), soundEvent);
+		}
+		else
+		{
+			SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
+			if (soundComp && soundComp.GetEventIndex(soundEvent) != -1)
+			{
+				soundComp.SoundEvent(soundEvent);
+			}
+			else
+			{
+				SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+				if (!soundManagerEntity)
+					return;
+			
+				soundManagerEntity.CreateAndPlayAudioSource(entity, soundEvent);	
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] targetRplId
+	//! \param[in] soundAction
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RpcAsk_PlaySound(RplId targetRplId, string soundAction)
+	{
+		Rpc(RpcDo_PlaySound, targetRplId, soundAction);
+		RpcDo_PlaySound(targetRplId, soundAction);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] targetRplId
+	//! \param[in] soundAction
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_PlaySound(RplId targetRplId, string soundAction)
+	{
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(targetRplId));
+		if (!rplComp)
+			return;
+		
+		IEntity entity = rplComp.GetEntity();
+		if (!entity)
+			return;
+		
+		SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
+		if (soundComp && soundComp.GetEventIndex(soundAction) != -1)
+		{
+			soundComp.SoundEvent(soundAction);
+		}
+		else
+		{
+			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+			if (!soundManagerEntity)
+				return;
+			
+			soundManagerEntity.CreateAndPlayAudioSource(entity, soundAction);	
+		}
+	}
+	
+#ifndef DISABLE_INVENTORY
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	SCR_CharacterInventoryStorageComponent GetCharacterStorage()
+	{
+		return m_Storage;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] item
+	//! \param[in] storage
+	//! \param[in] slotID
+	//! \return
+	// TODO: make this method as native (cannot override the proto native CanMoveItemToStorage)
+	bool CanInsertItemInActualStorage(IEntity item, BaseInventoryStorageComponent storage, int slotID = -1)
+	{
+		if (!IsAnimationReady() || IsInventoryLocked())
+			return false;
+
+		array<BaseInventoryStorageComponent> pStorages = {};
+		storage.GetOwnedStorages( pStorages, 1, false );
+		pStorages.Insert( storage );
+
+		foreach ( BaseInventoryStorageComponent pStorage : pStorages )
+		{	
+			bool bCanInsert = CanInsertItemInStorage( item, pStorage, -1 ); //split because of debug purposes
+			bool bCanMove = CanMoveItemToStorage( item, pStorage, -1 );
+			if ( bCanInsert || bCanMove )
+				return true;
+		}
+		return false;
+	}
+	
+	BaseInventoryStorageComponent FindActualStorageForItemResource(ResourceName itemResource, BaseInventoryStorageComponent storage, int slotID = -1, int count = 1)
+	{
+		array<BaseInventoryStorageComponent> storages = {};
+		storage.GetOwnedStorages(storages, 1, false);
+		storages.Insert(storage);
+
+		foreach (BaseInventoryStorageComponent actualStorage : storages)
+		{
+			if (CanInsertResourceInStorage(itemResource, actualStorage, slotID, count))
+				return actualStorage;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// ! The return code informs about the state of the operation ( i.e. cannot insert item, since it is too large )
+	// ! it clear the flag
+	//! \param[in] ERetCode
+	void SetReturnCode( EInventoryRetCode ERetCode ) 
+	{ 
+		m_ERetCode &= ~ERetCode; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// ! The return code informs about the state of the operation ( i.e. cannot insert item, since it is too large )
+	// ! it clear the flag
+	void SetReturnCodeDefault() 
+	{ 
+		m_ERetCode = EInventoryRetCode.RETCODE_DEFAULT_STATE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	EInventoryRetCode GetReturnCode()
+	{
+		return m_ERetCode;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetTotalWeightOfAllStorages()
+	{
+		array<BaseInventoryStorageComponent> storages = {};
+		float fTotalWeight = 0.0;
+
+		//TODO: actually not a very good way how to get storages, but using the GetStorages() method causes the weight being doubled. We need to get just the "parent" storages
+		//Also if someone ever fixes this let character anim progs know to fix it in CharacterControllerComponent.CalculateSpeedLimits.
+		storages.Insert(m_Storage.GetWeaponStorage());
+		storages.Insert(m_Storage);
+				
+		foreach (BaseInventoryStorageComponent storage : storages)
+		{
+			fTotalWeight += storage.GetTotalWeight();
+		}
+
+		return fTotalWeight;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] pOwner
+	void SetLootStorage( IEntity pOwner )
+	{
+		if (m_Storage)
+			m_Storage.SetLootStorage(pOwner);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Try to insert the item into the storage (not slot)
+	//! \param[in] pItem
+	//! \param[in] pStorageTo
+	//! \param[in] pStorageFrom
+	//! \param[in] cb
+	void InsertItem( IEntity pItem, BaseInventoryStorageComponent pStorageTo = null, BaseInventoryStorageComponent pStorageFrom = null, SCR_InvCallBack cb = null  )
+	{
+		if (!pItem || !IsAnimationReady() || IsInventoryLocked())
+			return;
+		
+		SetInventoryLocked(true);
+
+		bool canInsert = true;
+		if ( !pStorageTo ) // no storage selected, put it into best fitting storage
+		{
+			string soundEvent = SCR_SoundEvent.SOUND_EQUIP;
+			//TryInsertItem( pItem, EStoragePurpose.PURPOSE_DEPOSIT);	// works for the owned storages ( not for the vicinity storages )
+			if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_WEAPON_PROXY, cb ) )
+			{
+				if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT, cb ) )
+				{
+					if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_DEPOSIT, cb ) )
+					{
+						if ( !TryMoveItemToStorage( pItem, FindStorageForItem( pItem, EStoragePurpose.PURPOSE_ANY ), -1, cb ) )
+							canInsert = TryMoveItemToStorage(pItem, m_Storage, -1, cb); 				// clothes from storage in vicinity
+						else
+							soundEvent = SCR_SoundEvent.SOUND_PICK_UP;	// play pick up sound for everything else
+					
+						SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
+					}
+					else
+						soundEvent = SCR_SoundEvent.SOUND_PICK_UP;
+				}
+			}
+			
+			if (canInsert)
+				PlayItemSound(pItem, soundEvent);
+		}
+		else
+		{
+			if (pStorageTo == m_Storage)
+			{
+				canInsert = TryReplaceItem( pStorageTo, pItem, 0, cb );
+				if (canInsert)
+				{
+					SetInventoryLocked(false);
+					return;
+				}
+			}
+			
+			//~ Find a valid storage to insert item in
+			BaseInventoryStorageComponent validStorage = FindStorageForInsert(pItem, pStorageTo, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT);
+			
+			if (!validStorage)
+				validStorage = FindStorageForInsert(pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY);
+			
+			if (validStorage)
+			{
+				pStorageTo = validStorage;
+			}
+			//~ Check if item can be inserted in linked storages
+			else 
+			{
+				//~ Find valid storage in linked storages
+				SCR_UniversalInventoryStorageComponent universalStorage = SCR_UniversalInventoryStorageComponent.Cast(pStorageTo);
+				if (universalStorage)
+				{
+					array<BaseInventoryStorageComponent> linkedStorages = {};
+					universalStorage.GetLinkedStorages(linkedStorages);
+					
+					foreach(BaseInventoryStorageComponent linkedStorage : linkedStorages)
+					{
+						//~ Valid linked storage found
+						if (FindStorageForInsert(pItem, linkedStorage, EStoragePurpose.PURPOSE_ANY))
+						{
+							pStorageTo = linkedStorage;
+							break;
+						}
+					}
+				}
+			}
+			
+			if ( !pStorageFrom )
+				canInsert = TryInsertItemInStorage( pItem, pStorageTo, -1, cb );	// if we move item from ground to opened storage
+			else
+				canInsert = TryMoveItemToStorage( pItem, pStorageTo, -1, cb );		// if we move item between storages
+		}
+		
+		if (!canInsert)
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+		else
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
+		
+		if (m_CharacterController && canInsert && !pStorageFrom)
+			m_CharacterController.TryPlayItemGesture(EItemGesture.EItemGesturePickUp);
+
+		SetInventoryLocked(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Locks the inventory for the duration of the item removal process
+	//! \param[in] pItem
+	//! \param[in] storage
+	//! \param[in] cb
+	//! \return
+	bool TryRemoveItemFromInventory(IEntity pItem, BaseInventoryStorageComponent storage = null, InventoryOperationCallback cb = null)
+	{
+		if (!CanMoveItem(pItem))
+			return false;
+
+		if (!storage)
+		{
+			InventoryItemComponent itemComp = InventoryItemComponent.Cast(pItem.FindComponent(InventoryItemComponent));
+			if (!itemComp)
+				return false;
+			
+			InventoryStorageSlot parentSlot = itemComp.GetParentSlot();
+			if (parentSlot)
+				storage = parentSlot.GetStorage();
+		}
+		
+		SetInventoryLocked(true);
+		bool result = TryRemoveItemFromStorage(pItem, storage, cb);
+		SetInventoryLocked(false);
+
+		return result;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Checks whether it is possible to move the item
+	//! \param[in] item
+	//! \return
+	bool CanMoveItem(IEntity item)
+	{
+		if (!item || item.IsDeleted() || !IsAnimationReady() || IsInventoryLocked())
+			return false;
+		
+		return true;
+	}
+	
+//	//------------------------------------------------------------------------------------------------
+//	override bool TryInsertItemInStorageScr( IEntity pItem, BaseInventoryStorageComponent pStorageTo, int slotID = -1, InventoryOperationCallback cb = null )
+//	{
+//
+//		if ( !pStorageTo )
+//			return;
+//
+//		array<BaseInventoryStorageComponent> pStorages = {};
+//		pStorage.GetOwnedStorages( pStorages, 1, false );	// get all the storages, the storage has attached to it
+//		pStorages.Insert( pStorage );						// and put there also the storage
+//		foreach ( BaseInventoryStorageComponent tmpStorage : pStorages )
+//		{
+//			if ( MoveOperation( itemComponent, tmpStorage ) )
+//			{
+//				bRet = true;
+//				break;
+//			}
+//		}
+//	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pOwnerEntity
+	//! \param[in] pStorageTo
+	//! \param[in] cb
+	//! \return
+	bool TrySwapItems( IEntity pOwnerEntity, BaseInventoryStorageComponent pStorageTo, SCR_InvCallBack cb = null )
+	{
+		if ( !pStorageTo )
+			return false;
+						
+		InventoryStorageSlot slot =  pStorageTo.FindSuitableSlotForItem( pOwnerEntity );
+		if ( !slot )
+			return false;
+
+		if ( slot.GetAttachedEntity() )
+		{
+			if (!TrySwapItemStorages( pOwnerEntity, slot.GetAttachedEntity(), cb ))
+			{
+				CharacterHandWeaponSlotComponent handWeaponSlot = CharacterHandWeaponSlotComponent.Cast(slot.GetParentContainer());
+				//Move 
+				if (handWeaponSlot)
+				{
+					if (TryRemoveItemFromInventory(slot.GetAttachedEntity()))
+					{
+						TryInsertItem(pOwnerEntity, EStoragePurpose.PURPOSE_ANY, cb);
+						return true;
+					}
+				}
+				
+				return false;
+			}
+			
+			return true;
+		}
+		else
+		{
+			return TryMoveItemToStorage( pOwnerEntity, pStorageTo, slot.GetID(), cb );
+		}
+
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Try to equip the item into the slot (weapon)
+	//! \param[in] pOwnerEntity
+	//! \param[in] cb
+	//! \param[in] bFromVicinity
+	void EquipWeapon( IEntity pOwnerEntity, SCR_InvCallBack cb = null, bool bFromVicinity = true )
+	{
+		if ( !bFromVicinity )
+		{
+			if (!TrySwapItems(pOwnerEntity, m_Storage.GetWeaponStorage(), cb))
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+			else
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
+			
+			return;
+		}
+		
+		IEntity user = GetOwner();
+		if (!user)
+			return;
+		
+		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(user.FindComponent(BaseWeaponManagerComponent));
+		if (!weaponManager)
+			return;
+	
+		WeaponSlotComponent slot = weaponManager.GetCurrentSlot();
+		int preferred = 0;
+		if ( slot )
+			preferred = slot.GetWeaponSlotIndex();
+		
+		if (!EquipAny(m_Storage.GetWeaponStorage(), pOwnerEntity, preferred, cb))
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+		
+		if (cb && cb.m_pStorageFrom != cb.m_pStorageTo)
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
+			else
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_SAME_DROP);
+		
+		// Play sound
+		PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Try to equip the item into the slot (weapon)
+	//! \param[in] pOwnerEntity
+	//! \param[in] pUserEntity
+	//! \param[in] cb
+	void EquipWeaponAttachment( IEntity pOwnerEntity, IEntity pUserEntity, SCR_InvCallBack cb = null )
+	{
+		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(pUserEntity.FindComponent(BaseWeaponManagerComponent));
+		if (!weaponManager)
+			return;
+
+		WeaponSlotComponent slot = weaponManager.GetCurrentSlot();
+		if (!slot)
+			return;
+
+		IEntity weaponEntity = slot.GetWeaponEntity();
+		if (!weaponEntity)
+			return;
+
+		BaseInventoryStorageComponent storage = BaseInventoryStorageComponent.Cast(weaponEntity.FindComponent(BaseInventoryStorageComponent));
+		if (!storage)
+			return;
+		
+		EquipAny(storage, pOwnerEntity, -1, cb );
+		
+		// Play sound
+		PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Try to equip the item into the slot (gadget)
+	//! \param[in] pOwnerEntity
+	//! \param[in] cb
+	void EquipGadget( IEntity pOwnerEntity, SCR_InvCallBack cb = null )
+	{
+		//(kamil) the gadget slots are now present directly on individual clothing items - will have to revise logic here if swapping is wanted
+		BaseInventoryStorageComponent storageComp = FindStorageForItem(pOwnerEntity, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT);
+		if (storageComp)
+		{
+			EquipAny( storageComp, pOwnerEntity, -1, cb );
+			
+			// Play sound
+			PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Try to equip the item into the slot (cloth)
+	//! \param[in] pOwnerEntity
+	void EquipCloth( IEntity pOwnerEntity )
+	{
+		// m_pStorage because character storage is inherited from SCR_EquipedLoadoutStorageComponent
+		EquipAny(m_Storage, pOwnerEntity);
+		
+		// Play sound
+		PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Try to equip the item into the storage at provided slot
+	//! \param[in] storage
+	//! \param[in] item
+	//! \param[in] preferred
+	//! \param[in] cb
+	//! \return
+	bool EquipAny(BaseInventoryStorageComponent storage, IEntity item, int preferred = -1, SCR_InvCallBack cb = null)
+	{
+		if (!storage || !item)
+			return false;
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!itemComp)
+			return false;
+		
+		InventoryStorageSlot m_TargetSlot = storage.FindSuitableSlotForItem(item);
+		// Storage doesn't have suitable slot for item (therefore any future opearation would fail)
+		if (!m_TargetSlot)
+			return false;
+
+		if (preferred > 0 && preferred < storage.GetSlotsCount())
+			m_TargetSlot = storage.GetSlot(preferred);
+		else
+			preferred = m_TargetSlot.GetID();
+
+		InventoryStorageSlot sourceSlot = itemComp.GetParentSlot();
+		// Item is on the ground as it does not belong to any storage (eg is not in the slot)
+		if (!sourceSlot || !sourceSlot.GetStorage())
+		{
+			// we are picking up item from ground
+			// if target slot is not empty return the result of replace operation
+			if (m_TargetSlot.GetAttachedEntity())
+				return TryReplaceItem(item, storage, preferred, cb);
+
+			// we are picking up item from ground into empty slot, simply return result of the insert operation
+			return TryInsertItemInStorage(item, storage, preferred, cb);
+		}
+
+		// our target slot is empty and we moving item from another storage
+		// simply return the result of move operation
+		if (!m_TargetSlot.GetAttachedEntity())
+			return TryMoveItemToStorage(item, storage, preferred, cb);
+
+		BaseInventoryStorageComponent sourceStorage = sourceSlot.GetStorage();
+		bool isTakenFromArsenal = sourceStorage.GetOwner().FindComponent(SCR_ArsenalComponent);
+		bool isTakenFromBody = false;
+		
+		ChimeraCharacter lootedBodyCharacter = ChimeraCharacter.Cast(sourceStorage.GetOwner());
+		DamageManagerComponent lootedBodyDamageManager;
+		
+		if (lootedBodyCharacter)
+			lootedBodyDamageManager = lootedBodyCharacter.GetDamageManager();
+		
+		if (lootedBodyDamageManager)
+			isTakenFromBody = lootedBodyDamageManager.GetState() == EDamageState.DESTROYED;
+		
+		bool performDropOfOriginalItem = isTakenFromBody || isTakenFromArsenal || sourceStorage.GetOwner().FindComponent(SCR_CampaignArmoryStorageComponent) ;
+		
+		// If we don't want to drop item
+		if (performDropOfOriginalItem)
+		{
+			// if we want to drop originally equipped item
+			// here sequence would be as follows:
+			// 1 - drop original item
+			// 2 - insert item to target storage
+			// 3 - try move as many items as possible from dropped item back to inventory
+			// 4 - delete dropped item
+	
+			// At first - let's validate if this is even possible
+			if (!CanSwapItemStorages(item, m_TargetSlot.GetAttachedEntity()))
+				return false;
+	
+			DropAndMoveOperationCallback chainedCallback = new DropAndMoveOperationCallback();
+			chainedCallback.m_Manager = this;
+			chainedCallback.m_ItemAfter = itemComp;
+			chainedCallback.m_ItemBefore = InventoryItemComponent.Cast(m_TargetSlot.GetAttachedEntity().FindComponent(InventoryItemComponent));
+			chainedCallback.m_TargetSlot = m_TargetSlot;
+			chainedCallback.m_FinalCB = cb;
+			chainedCallback.m_bDeleteItemIfEmpty = true;
+			chainedCallback.m_bIstakenFromArsenal = isTakenFromArsenal;
+	
+			return TryRemoveItemFromStorage(m_TargetSlot.GetAttachedEntity(), m_TargetSlot.GetStorage(), chainedCallback);
+		}
+		
+		// we return the result of swap opoeration were item from slotA will be transfered to slotB and item from slotB to slotA
+		return TrySwapItemStorages(item, m_TargetSlot.GetAttachedEntity(), cb);
+	} 
+	
+	//------------------------------------------------------------------------------------------------
+	//! Try to drop the original item and replace it by itemToReplace at the slot specified by slotID
+	//! \param[in] storage
+	//! \param[in] item
+	//! \param[in] slotID
+	//! \param[in] cb
+	//! \param[in] isTakenFromArsenal
+	//! \param[in] deleteOriginalItemIfEmpty
+	//! \return
+	bool TryReplaceAndDropItemAtSlot(BaseInventoryStorageComponent storage, IEntity item, int slotID, SCR_InvCallBack cb = null, bool isTakenFromArsenal = false, bool deleteOriginalItemIfEmpty = false)
+	{
+		if (!storage || !item)
+			return false;
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!itemComp)
+			return false;
+		
+		InventoryStorageSlot m_TargetSlot = storage.GetSlot(slotID);
+		// Storage doesn't have suitable slot for item (therefore any future opearation would fail)
+		if (!m_TargetSlot)
+			return false;		
+
+		InventoryStorageSlot sourceSlot = itemComp.GetParentSlot();
+		// Item is on the ground as it does not belong to any storage (eg is not in the slot)
+		if (!sourceSlot || !sourceSlot.GetStorage())
+		{
+			// we are picking up item from ground
+			// if target slot is not empty return the result of replace operation
+			if (m_TargetSlot.GetAttachedEntity())
+				return TryReplaceItem(item, storage, slotID, cb);
+			// we are picking up item from ground into empty slot, simply return result of the insert operation
+			return TryInsertItemInStorage(item, storage, slotID, cb);
+		}
+
+		// our target slot is empty and we moving item from another storage
+		// simply return the result of move operation
+		if (!m_TargetSlot.GetAttachedEntity())
+			return TryMoveItemToStorage(item, storage, slotID, cb);
+
+		// if we want to drop originally equipped item
+		// here sequence would be as follows:
+		// 1 - drop original item
+		// 2 - insert item to target storage
+		// 3 - try move as many items as possible from dropped item back to inventory
+		// 4 - delete dropped item
+
+		// At first - let's validate if this is even possible
+		if (!CanSwapItemStorages(item, m_TargetSlot.GetAttachedEntity()))
+			return false;
+
+		DropAndMoveOperationCallback chainedCallback = new DropAndMoveOperationCallback();
+		chainedCallback.m_Manager = this;
+		chainedCallback.m_ItemAfter = itemComp;
+		chainedCallback.m_ItemBefore = InventoryItemComponent.Cast(m_TargetSlot.GetAttachedEntity().FindComponent(InventoryItemComponent));
+		chainedCallback.m_TargetSlot = m_TargetSlot;
+		chainedCallback.m_bDeleteItemIfEmpty = deleteOriginalItemIfEmpty; 
+		chainedCallback.m_bIstakenFromArsenal = isTakenFromArsenal;
+		chainedCallback.m_FinalCB = cb;
+		
+		return TryRemoveItemFromStorage(m_TargetSlot.GetAttachedEntity(), m_TargetSlot.GetStorage(), chainedCallback);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Try to replace at preferred slot
+	//! \param[in] storage
+	//! \param[in] item
+	//! \param[in] preferred
+	//! \param[in] cb
+	//! \return
+	bool TryReplaceItem( BaseInventoryStorageComponent storage, IEntity item, int preferred, SCR_InvCallBack cb )
+	{
+		int slotCount = storage.GetSlotsCount();
+		
+		for ( int i = 0; i < slotCount; i++ )
+		{
+			int j = ( i + preferred ) % slotCount;
+			if ( CanReplaceItem( item, storage, j ) )
+			{
+				if ( TryReplaceItem( item, storage, j, cb ) )
+					return true;
+			}
+		}
+
+		return false;
+	} 
+	
+	//------------------------------------------------------------------------------------------------
+	//! Try to equip the item into the slot (weapon)
+	//! \param[in] weaponStorage
+	//! \param[in] weapon
+	void EquipItem( EquipedWeaponStorageComponent weaponStorage, IEntity weapon )
+	{
+		// There are empty suitable slots at weapon storage
+		if ( CanInsertItemInStorage( weapon, weaponStorage, -1) )
+		{
+			TryInsertItemInStorage( weapon, weaponStorage, -1 );
+			return;
+		}
+
+		// Otherwise try replace weapon at suitable slot
+		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast( GetOwner().FindComponent(BaseWeaponManagerComponent) );
+		if (!weaponManager)
+			return;
+
+		WeaponSlotComponent slot = weaponManager.GetCurrentSlot();
+		int slotCount = weaponStorage.GetSlotsCount();
+		int preferred = 0;
+		if ( slot )
+			preferred = slot.GetWeaponSlotIndex();
+
+		for ( int i = 0; i < slotCount; i++ )
+		{
+			int j = ( i + preferred ) % slotCount;
+			if ( CanReplaceItem( weapon, weaponStorage, j ) )
+			{
+				TryReplaceItem( weapon, weaponStorage, j );
+				return;
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get if resupply magazines action is available with the given magazine count.
+	//! Note it does not check if inventory has free space
+	//! \param[in] resupplyMagazineCount How many magazines will be resupplied
+	//! \param[out] resupplyUnavailableReason The reason why the Resupplied failed if it failed
+	//! \param[in] muzzleType (optional) If you want the Resupply to only check specific muzzle types. -1 to Ignore
+	//! \param[in] mustBeInStorage (Optional) If storage is given than it will check if the item you try to resupply is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
+	//! \return true if resupply is available.
+	bool IsResupplyMagazinesAvailable(int resupplyMagazineCount = 4, out EResupplyUnavailableReason resupplyUnavailableReason = EResupplyUnavailableReason.NONE, EMuzzleType muzzleType = -1, InventoryStorageManagerComponent mustBeInStorage = null)
+	{
+		BaseWeaponManagerComponent weaponsManager = BaseWeaponManagerComponent.Cast(GetOwner().FindComponent(BaseWeaponManagerComponent));
+		if (!weaponsManager)
+			return false;
+
+		array<IEntity> weaponList = {};
+		weaponsManager.GetWeaponsList(weaponList);
+
+		bool foundValidWeapon = false;
+		ResourceName magazineOrProjectilePrefab;
+		IEntity spawnedMagazine;
+
+		BaseWeaponComponent comp;
+		array<BaseMuzzleComponent> muzzles;
+		SCR_MuzzleInMagComponent inMagMuzzle;
+		SCR_ArsenalInventoryStorageManagerComponent arsenalStorage;
+		foreach (IEntity weapon : weaponList)
+		{
+			comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
+			if (!comp)
+				continue;
+
+			string weaponSlotType = comp.GetWeaponSlotType();
+
+			// Only refill primary and secondary weapons
+			if ((weaponSlotType != "primary" && weaponSlotType != "secondary"))
+				continue;
+
+			muzzles = {};
+
+			//~ Get base muzzle to only supply magazines
+			comp.GetMuzzlesList(muzzles);
+			foreach (BaseMuzzleComponent muzzle : muzzles)
+			{
+				if (muzzleType != -1 && muzzle.GetMuzzleType() != muzzleType)
+					continue;
+
+				inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
+				if (inMagMuzzle && !inMagMuzzle.CanBeReloaded())
+					continue;
+
+				magazineOrProjectilePrefab = muzzle.GetDefaultMagazineOrProjectileName();
+				if (SCR_StringHelper.IsEmptyOrWhiteSpace(magazineOrProjectilePrefab))
+					continue;
+
+				//~ At least one valid weapon was found
+				foundValidWeapon = true;
+
+				//~ If storage is given check if magazine or projectile is in storage and only allow resupply if it is (Does not care for amount and intended use is with Arsenal)
+				if (mustBeInStorage)
+				{
+					arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(GetOwner(), magazineOrProjectilePrefab) < 1))
+					{
+						if (resupplyUnavailableReason < EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE)
+							resupplyUnavailableReason = EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
+
+						continue;
+					}
+				}
+
+				//~ Check if there are already enough magazines
+				if (resupplyMagazineCount - GetMagazineCountByMuzzle(null,muzzle) <= 0)
+				{
+					if (resupplyUnavailableReason < EResupplyUnavailableReason.ENOUGH_ITEMS)
+						resupplyUnavailableReason = EResupplyUnavailableReason.ENOUGH_ITEMS;
+
+					continue;
+				}
+				
+				//~ If it can be stored
+				if (!FindStorageForResourceInsert(magazineOrProjectilePrefab, m_Storage))
+				{
+					if (resupplyUnavailableReason < EResupplyUnavailableReason.INVENTORY_FULL)
+						resupplyUnavailableReason = EResupplyUnavailableReason.INVENTORY_FULL;
+					
+					continue;
+				}
+
+				//~ Passes all the checks
+				//~ Set reason none just in case as resupply is available
+				resupplyUnavailableReason = EResupplyUnavailableReason.NONE;
+
+				//~ All checks passed and at least one magazine can be added so function returns true
+				return true;
+			}
+		}
+
+		//~ Did not have any valid weapons so set unavailable reason to no valid weapon
+		if (!foundValidWeapon)
+			resupplyUnavailableReason = EResupplyUnavailableReason.NO_VALID_WEAPON;
+
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get map of all items (ResourceName) and count to add to inventory on resupply
+	//! \param[out] validResupplyItems
+	//! \param[in] maxMagazineCount Desired number of magazines
+	//! \param[in] muzzleType (optional) If you want to Resupply only check specific muzzle types. -1 to Ignore
+	//! \param[in] mustBeInStorage (Optional) If storage is given than it will check if the item you try to check is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
+	void GetValidResupplyItemsAndCount(out notnull map<ResourceName, int> validResupplyItems, int maxMagazineCount = 4, EMuzzleType muzzleType = -1, InventoryStorageManagerComponent mustBeInStorage = null)
+	{
+		validResupplyItems.Clear();
+
+		BaseWeaponManagerComponent weaponsManager = BaseWeaponManagerComponent.Cast(GetOwner().FindComponent(BaseWeaponManagerComponent));
+		if (!weaponsManager)
+			return;
+		
+		array<IEntity> weaponList = {};
+		weaponsManager.GetWeaponsList(weaponList);
+
+		BaseWeaponComponent comp;
+		array<BaseMuzzleComponent> muzzles;
+		SCR_MuzzleInMagComponent inMagMuzzle;
+		SCR_ArsenalInventoryStorageManagerComponent arsenalStorage;
+		foreach (IEntity weapon : weaponList)
+		{
+			comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
+			string weaponSlotType = comp.GetWeaponSlotType();
+
+			// Only refill primary and secondary weapons
+			if (!(weaponSlotType == "primary" || weaponSlotType == "secondary"))
+				continue;
+
+			muzzles = {};
+
+			//~ Get base muzzle to only supply magazines
+			comp.GetMuzzlesList(muzzles);
+			foreach (BaseMuzzleComponent muzzle : muzzles)
+			{
+				if (muzzleType != -1 && muzzle.GetMuzzleType() != muzzleType)
+					continue;
+
+				inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
+				if (inMagMuzzle && !inMagMuzzle.CanBeReloaded())
+					continue;
+
+				ResourceName magazineOrProjectilePrefab = muzzle.GetDefaultMagazineOrProjectileName();
+				if (SCR_StringHelper.IsEmptyOrWhiteSpace(magazineOrProjectilePrefab))
+					continue;
+
+				//~ Get current magazine count and see if it needs to be increased
+				int resupplyCount = maxMagazineCount - GetMagazineCountByMuzzle(null,muzzle);
+				if (resupplyCount <= 0)
+					continue;
+
+				//~ If storage is given check if magazine or projectile is in storage and only allow resupply if it is (Does not care for amount and intended use is with Arsenal)
+				if (mustBeInStorage)
+				{
+					arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(GetOwner(), magazineOrProjectilePrefab) < 1))
+						continue;
+				}
+
+				//~ Add magazine to be resupplied
+				if (!validResupplyItems.Contains(magazineOrProjectilePrefab))
+					validResupplyItems.Insert(magazineOrProjectilePrefab, resupplyCount);
+				//~ Update count till max
+				else
+					validResupplyItems[magazineOrProjectilePrefab] = Math.Clamp(validResupplyItems[magazineOrProjectilePrefab] + resupplyCount, 0, maxMagazineCount);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Resupply all weapons in map with the given number of magazines.
+	//! \param[in] validResupplyItems Map of ResourceNames and amount to add to inventory
+	void ResupplyMagazines(notnull map<ResourceName, int> validResupplyItems)
+	{
+		//~ Nothing to resupply
+		if (validResupplyItems.IsEmpty())
+			return;
+		
+		if (!m_ResupplyMagazineCallback)
+			m_ResupplyMagazineCallback = new SCR_ResupplyMagazinesCallback(this);
+
+		//~ Resupply each given entry
+		foreach (ResourceName itemPrefab, int count : validResupplyItems)
+		{
+			m_ResupplyMagazineCallback.Insert(itemPrefab, count);
+		}
+
+		m_ResupplyMagazineCallback.Start();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Resupply all weapons so they have given number of magazines.
+	//! \param[in] maxMagazineCount Desired number of magazines
+	//! \param[in] muzzleType (optional) If you want to Resupply only check specific muzzle types. -1 to Ignore
+	//! \param[in] mustBeInStorage (Optional) If storage is given than it will check if the item you try to check is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
+	void ResupplyMagazines(int maxMagazineCount = 4, EMuzzleType muzzleType = -1, InventoryStorageManagerComponent mustBeInStorage = null)
+	{
+		//~ Get resupply prefabs
+		map<ResourceName, int> validResupplyItems = new map<ResourceName, int>();
+		GetValidResupplyItemsAndCount(validResupplyItems, maxMagazineCount, muzzleType, mustBeInStorage);
+		
+		//~ Resupply
+		ResupplyMagazines(validResupplyItems);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void EndResupplyMagazines()
+	{
+		delete m_ResupplyMagazineCallback;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] muzzle
+	//! \param[in] maxMagazineCount
+	//! \param[in] mustBeInStorage
+	//! \param[out] currentMagazineAmount
+	//! \return
+	EResupplyUnavailableReason CanResupplyMuzzle(IEntity user, notnull BaseMuzzleComponent muzzle, int maxMagazineCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentMagazineAmount = -1)
+	{
+		//~ Cannot resupply weapons that cannot be ressupplied like the US rocket Launcer
+		SCR_MuzzleInMagComponent inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
+		if (inMagMuzzle && !inMagMuzzle.CanBeReloaded())
+			return EResupplyUnavailableReason.NO_VALID_WEAPON;
+
+		//~ Get default magazine to resupply
+		ResourceName magazineToResupply = muzzle.GetDefaultMagazineOrProjectileName();
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(magazineToResupply))
+			return EResupplyUnavailableReason.NO_VALID_WEAPON;
+		
+		//~ Check if it is in arsenal or in the storage
+		if (mustBeInStorage)
+		{
+			SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(user, magazineToResupply) < 1))
+				return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
+		}
+		
+		//~ Already has enough magazines
+		currentMagazineAmount = GetMagazineCountByMuzzle(user,muzzle); 
+		if (maxMagazineCount > 0 && currentMagazineAmount >= maxMagazineCount)
+			return EResupplyUnavailableReason.ENOUGH_ITEMS;
+		
+		//~ Check if there is space in the inventory
+		if (!FindStorageForResourceInsert(magazineToResupply, m_Storage))
+			return EResupplyUnavailableReason.INVENTORY_FULL;
+				
+		return EResupplyUnavailableReason.RESUPPLY_VALID;	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] itemToResupply
+	//! \param[in] maxItemCount
+	//! \param[in] mustBeInStorage
+	//! \param[out] currentItemAmount
+	//! \return
+	EResupplyUnavailableReason CanResupplyItem(IEntity user, ResourceName itemToResupply, int maxItemCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentItemAmount = -1)
+	{
+		//~ Check if it is in arsenal or in the storage
+		if (mustBeInStorage)
+		{
+			SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(itemToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(user, itemToResupply) < 1))
+				return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
+		}
+		
+		//~ Already has enough of the item in storage
+		currentItemAmount = GetDepositItemCountByResource(user, itemToResupply); 
+		if (maxItemCount > 0 && currentItemAmount >= maxItemCount)
+			return EResupplyUnavailableReason.ENOUGH_ITEMS;
+			
+		//~ Check if there is space in the inventory
+		if (!FindStorageForResourceInsert(itemToResupply, m_Storage))
+			return EResupplyUnavailableReason.INVENTORY_FULL;
+	
+		return EResupplyUnavailableReason.RESUPPLY_VALID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! try to move item from owner's storage to vicinity. It might be moved to ground or to a storage in the vicinity
+	//! \param[in] pItem
+	//! \param[in] pStorageTo
+	void MoveItemToVicinity(IEntity pItem, BaseInventoryStorageComponent pStorageTo = null);
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	void OpenInventory()
+	{
+		if (m_CharacterController && m_CharacterController.GetLifeState() != ECharacterLifeState.ALIVE)
+			return;
+
+		MenuManager menuManager = GetGame().GetMenuManager();
+		ChimeraMenuPreset menu = ChimeraMenuPreset.Inventory20Menu;
+		
+		MenuBase inventoryMenu = menuManager.FindMenuByPreset(menu);
+		if (inventoryMenu)
+			return;
+		
+		menuManager.OpenMenu( menu );
+		m_OnInventoryOpenInvoker.Invoke(true);
+		
+		if (!m_CharacterController)
+			return;
+		
+		// Quit ADS
+		m_CharacterController.SetWeaponADS(false);
+		m_CharacterController.SetGadgetRaisedModeWanted(false);
+		
+		// Pin grenade
+		if (m_CharacterController.GetInputContext() && m_CharacterController.GetInputContext().GetThrow())
+			m_CharacterController.SetThrow(false, true);
+				
+		// Inspection or lowered weapon stance
+		m_bWasRaised = m_CharacterController.IsWeaponRaised();
+		m_CharacterController.SetWeaponRaised(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void CloseInventory()
+	{
+		MenuManager menuManager = GetGame().GetMenuManager();
+		if (!menuManager)
+			return;
+		
+		menuManager.CloseMenuByPreset(ChimeraMenuPreset.Inventory20Menu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	IEntity GetStorageToOpen()
+	{
+		IEntity result = m_StorageToOpen;
+		m_StorageToOpen = null;
+		
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] storage
+	void SetStorageToOpen(IEntity storage)
+	{
+		m_StorageToOpen = storage;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void Action_OpenInventory()
+	{
+		CompartmentAccessComponent cac = m_CharacterController.GetCharacter().GetCompartmentAccessComponent();
+		if (cac && cac.IsInCompartment())
+		{
+			IEntity owner = cac.GetCompartment().GetOwner();
+			while (owner)
+			{
+				UniversalInventoryStorageComponent comp = UniversalInventoryStorageComponent.Cast(owner.FindComponent(UniversalInventoryStorageComponent));
+				if (comp)
+				{
+					SetStorageToOpen(owner);
+					break;
+				}
+
+				owner = owner.GetParent();
+			}
+		}
+
+		if (cac && (cac.IsGettingIn() || cac.IsGettingOut()))
+			return;
+
+		OpenInventory();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnInventoryMenuClosed()
+	{
+		m_OnInventoryOpenInvoker.Invoke(false);
+		
+		// Revert inspection or lowered weapon stance
+		if (m_CharacterController)
+			m_CharacterController.SetWeaponRaised(m_bWasRaised);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnStorageAdded(BaseInventoryStorageComponent storage) 
+	{ 
+		// do nothing
+ 	}
+	
+//	//------------------------------------------------------------------------------------------------
+//	//! Even after physics update
+//	//! \param[in] owner The owner entity
+//	//! \param[in] frameNumber Time passed since last frame
+//	override void EOnPostFrame(IEntity owner, float timeSlice)
+//	{
+//		m_OnPostFrameInvoker.Invoke(timeSlice);
+//	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	void DebugListAllItemsInInventory()
+	{
+		array<IEntity> items = {};
+		GetItems(items);
+		Print("INV: no item", LogLevel.NORMAL);
+		InventoryItemComponent pInvComp;
+		ItemAttributeCollection attribs;
+		foreach (IEntity item : items)
+		{
+			pInvComp = InventoryItemComponent.Cast(  item .FindComponent( InventoryItemComponent ) );
+			if( pInvComp )
+			{
+				attribs = pInvComp.GetAttributes();
+				if( !attribs )
+					break;
+
+				string sName = attribs.GetUIInfo().GetName();
+				Print("INV: " + sName, LogLevel.NORMAL);
+
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RpcAsk_ServerToDeleteEntity(RplId targetRplId)
+	{
+	    RplComponent rplComp = RplComponent.Cast(Replication.FindItem(targetRplId));
+        if (!rplComp)
+            return;
+
+        IEntity entity = rplComp.GetEntity();
+        if (!entity)
+            return;
+
+      	RplComponent.DeleteRplEntity(entity, false);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] ent
+	void AskServerToDeleteEntity(IEntity ent)
+	{
+		RplComponent rplComp = RplComponent.Cast(ent.FindComponent(RplComponent));
+		if (!rplComp)
+			return;
+			
+		RplId rplId = rplComp.Id();
+		Rpc(RpcAsk_ServerToDeleteEntity, rplId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Enable/disable post frame event
+	void EnablePostFrame(bool enable)
+	{
+		if (enable)
+			SetEventMask(GetOwner(), EntityEvent.POSTFRAME);
+		else
+			ClearEventMask(GetOwner(), EntityEvent.POSTFRAME);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	int GetHealthComponentCount()
+	{
+		return m_iHealthEquipment;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	//!
+	IEntity GetBandageItem()
+	{	
+		return FindItem(m_BandagePredicate, EStoragePurpose.PURPOSE_DEPOSIT);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// destructor
+	void ~SCR_InventoryStorageManagerComponent()
+	{
+		m_ERetCode = EInventoryRetCode.RETCODE_DEFAULT_STATE;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool IsAnimationReady()
+	{
+		if (m_CharacterController)
+			return m_CharacterController.CanPlayItemGesture() || m_CharacterController.IsPlayingItemGesture();
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool IsInventoryLocked()
+	{
+		return m_bIsInventoryLocked;	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] isLocked
+	void SetInventoryLocked(bool isLocked)
+	{
+		m_bIsInventoryLocked = isLocked;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in,out] items
+	//! \param[in] storage
+	//! \return
+	int GetAllItems(inout array<IEntity> items, BaseInventoryStorageComponent storage)
+	{
+		if (!storage || !items)
+			return 0;
+			
+		int count = 0;
+		
+		if (!ClothNodeStorageComponent.Cast(storage))
+			count = storage.GetAll(items);
+
+		array<BaseInventoryStorageComponent> itemToReplaceAttachedStorages = {};
+		storage.GetOwnedStorages(itemToReplaceAttachedStorages, 1, false);
+		foreach (BaseInventoryStorageComponent attachedStorage : itemToReplaceAttachedStorages)
+		{			
+			if (ClothNodeStorageComponent.Cast(attachedStorage))
+				attachedStorage.GetOwnedStorages(itemToReplaceAttachedStorages, 1, false);
+			else
+				count += attachedStorage.GetAll(items);
+		}
+			
+		return count;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	//! Get available prefabs of weapons of specified types
+	//! \param[in] weapons
+	//! \param[in] weaponType
+	//! \param[out] prefabs
+	void GetWeaponPrefabsOfType(notnull array<IEntity> weapons, EWeaponType weaponType, notnull out array<EntityPrefabData> prefabs)
+	{
+		BaseWeaponComponent weapon;
+		EntityPrefabData prefabData;
+		foreach (IEntity item : weapons)
+		{
+			weapon = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));
+			if (weapon.GetWeaponType() != weaponType)
+				continue;
+			
+			// Ignore currently selected items
+			prefabData = item.GetPrefabData();
+			if (prefabData && !prefabs.Contains(prefabData))
+				prefabs.Insert(prefabData);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	//! Find next weapon of specified types, excluding currentItem, but including it in sorting
+	//! \param[in] weaponType
+	//! \param[in] currentItem
+	//! \param[in] allowCurrentPrefab
+	//! \return
+	IEntity FindNextWeaponOfType(EWeaponType weaponType, IEntity currentItem = null, bool allowCurrentPrefab = false)
+	{
+		array<EntityPrefabData> prefabs = {};
+		
+		// Currently selected weapon may be outside of inventory and it has to be considered for sorting
+		EntityPrefabData currentPrefab;
+		BaseWeaponComponent currentWeapon;
+		if (currentItem)
+		{
+			currentPrefab = currentItem.GetPrefabData();
+			currentWeapon = BaseWeaponComponent.Cast(currentItem.FindComponent(BaseWeaponComponent));
+			
+			if (currentPrefab && currentWeapon.GetWeaponType() == weaponType)
+				prefabs.Insert(currentPrefab);
+		}
+		
+		// Collect all the matching prefabs
+		array<IEntity> items = {};
+		FindItemsWithComponents(items, {BaseWeaponComponent});
+		GetWeaponPrefabsOfType(items, weaponType, prefabs);
+		
+		// No valid prefabs
+		if (prefabs.IsEmpty())
+			return null;
+		
+		// TODO: better sorting, perhaps by name
+		prefabs.Sort();
+		
+//		foreach (EntityPrefabData prefab : prefabs)
+//		{
+//			Print(prefab.GetPrefabName(), LogLevel.WARNING);
+//		}
+		
+		// Select next prefab
+		int nextPrefabID = (prefabs.Find(currentPrefab) + 1) % prefabs.Count();
+		EntityPrefabData nextPrefab = prefabs[nextPrefabID];
+		
+		// Return nothing if prefab is unchanged
+		if (!allowCurrentPrefab && nextPrefab == currentPrefab)
+			return null;
+		
+		// Select the weapon that matches the type to be selected
+		foreach (IEntity item : items)
+		{
+			if (item && item.GetPrefabData() == nextPrefab)
+				return item;
+		}
+		
+		return null;
+	}
+
+#else
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] ERetCode
+	void SetReturnCode( EInventoryRetCode ERetCode ) ;
+
+	//------------------------------------------------------------------------------------------------
+	void SetReturnCodeDefault() ;
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	EInventoryRetCode GetReturnCode()
+	{
+		return m_ERetCode;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetTotalWeightOfAllStorages();
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] pOwner
+	void SetLootStorage( IEntity pOwner );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pItem
+	void InsertItem( IEntity pItem );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pOwnerEntity
+	//! \param[in] cb
+	//! \param[in] bFromVicinity
+	void EquipWeapon( IEntity pOwnerEntity, SCR_InvCallBack cb = null, bool bFromVicinity = true );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pOwnerEntity
+	void EquipGadget( IEntity pOwnerEntity );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pOwnerEntity
+	void EquipCloth( IEntity pOwnerEntity );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] storage
+	//! \param[in] item
+	//! \param[in] preferred
+	void EquipAny(BaseInventoryStorageComponent storage, IEntity item, int preferred = 0);
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] weaponStorage
+	//! \param[in] weapon
+	void EquipItem( EquipedWeaponStorageComponent weaponStorage, IEntity weapon );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void OpenInventory();
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void Action_OpenInventory();
+
+	//------------------------------------------------------------------------------------------------
+	override void OnStorageAdded(BaseInventoryStorageComponent storage);
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] enable
+	void EnablePostFrame(bool enable);
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	int GetHealthComponentCount();
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	IEntity GetBandageItem();
+	
+#endif	
+	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
+	void SCR_InventoryStorageManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
+	{
+		#ifndef DISABLE_INVENTORY
+		
+		//ChimeraCharacter pChimeraChar = ChimeraCharacter.Cast( ent );
+		//pChimeraChar.s_OnCharacterCreated.Insert( DebugListAllItemsInInventory );
+		
+		m_Storage = SCR_CharacterInventoryStorageComponent.Cast(ent.FindComponent(CharacterInventoryStorageComponent));
+		m_CharacterController = SCR_CharacterControllerComponent.Cast(ent.FindComponent(SCR_CharacterControllerComponent));
+		#endif
+	}
+}
+
+enum ECharacterHitZoneGroup : EHitZoneGroup
+{
+	HEAD = 10,
+	UPPERTORSO = 20,
+	LOWERTORSO = 30,
+	LEFTARM = 40,
+	RIGHTARM = 50,
+	LEFTLEG = 60,
+	RIGHTLEG = 70,
+}
+
+//------------------------------------------------------------------------------------------------
+class SCR_CharacterDamageManagerComponentClass: SCR_ExtendedDamageManagerComponentClass
+{
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
+{
+	// 1000 ms timer for bloody clothes update
+	static const int BLOOD_CLOTHES_UPDATE_PERIOD = 1000;
+	
+	// bleeding rate multiplier after death - used to stop particles sooner
+	const float DEATH_BLEEDOUT_SCALE = 4;
+	
+	// Physics variables
+	protected float m_fHighestContact;
+	protected float m_fMinImpulse;
+	protected float m_fWaterFallDamageMultiplier = 0.33;
+	protected int m_fMinWaterFallDamageVelocity = 10;
+
+	// Static array for all limbs
+	static ref array<ECharacterHitZoneGroup> LIMB_GROUPS;
+	static const ref array<ECharacterHitZoneGroup> EXTREMITY_LIMB_GROUPS = {ECharacterHitZoneGroup.LEFTARM, ECharacterHitZoneGroup.RIGHTARM, ECharacterHitZoneGroup.LEFTLEG, ECharacterHitZoneGroup.RIGHTLEG};
+	
+	//replicated arrays for clients
+	protected ref array<ECharacterHitZoneGroup> m_aTourniquettedGroups;
+	protected ref array<ECharacterHitZoneGroup> m_aSalineBaggedGroups;
+	protected ref array<int> m_aBeingHealedGroup;
+	protected ref array<float> m_aGroupBleedingRates;
+	
+	protected ref map<SCR_CharacterHitZone, ref SCR_ArmoredClothItemData> m_mClothItemDataMap;
+	protected ref map<HitZone, ParticleEffectEntity> m_mBleedingParticles;
+	protected ref array<HitZone> m_aBleedingHitZones;
+	protected SCR_CharacterBloodHitZone m_pBloodHitZone;
+	protected SCR_CharacterResilienceHitZone m_pResilienceHitZone;
+	protected SCR_CharacterHeadHitZone m_pHeadHitZone;
+
+	// audio
+	protected SCR_CommunicationSoundComponent m_CommunicationSound;
+
+	static SCR_GameModeHealthSettings s_HealthSettings;
+ 	
+	protected bool m_bDOTScaleChangedByGM;
+	protected bool m_bRegenScaleChangedByGM;
+	protected bool m_bUnconsciousnessSettingsChangedByGM;
+	protected bool m_bOverrideCharacterMedicalGMAttribute;
+	
+	// TODO: Move these attributes to prefab data to save some memory
+	[Attribute(defvalue: "", uiwidget: UIWidgets.ResourceNamePicker, desc: "Bleeding particle effect", params: "ptc", precision: 3, category: "Bleeding")]
+	protected ResourceName m_sBleedingParticle;
+
+	[Attribute(defvalue: "0.5", uiwidget: UIWidgets.Slider, desc: "Bleeding particle effect rate scale", params: "0 5 0.001", precision: 3, category: "Bleeding Mode")]
+	protected float m_fBleedingParticleRateScale;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Character bleeding rate multiplier", params: "0 5 0.001", precision: 3, category: "Bleeding")]
+	protected float m_fDOTScale;
+	
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Character regeneration rate multiplier", params: "0 5 0.001", precision: 3, category: "Regeneration")]
+	protected float m_fRegenScale;
+	
+	[Attribute("0.3", UIWidgets.Auto, "Resilience regeneration scale while unconscious\n[x * 100%]")]
+	protected float m_fUnconsciousRegenerationScale;
+	
+	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Whether unconsciousness is allowed", category: "Unconsciousness")]
+	protected bool m_bPermitUnconsciousness;
+	
+	[Attribute(defvalue: "0.05", uiwidget: UIWidgets.Slider, desc: "Affects how much the bleeding is reduced", params: "0 1 0.001", precision: 3, category: "Tourniquets")]
+	protected float m_fTourniquetStrengthMultiplier;
+	
+	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Allow this character to show bleeding effects on any clothing items when damaged or bleeding", category: "Bleeding")]
+	protected bool m_bAllowBloodyClothes;
+	
+	//-----------------------------------------------------------------------------------------------------------
+	event override void OnInit(IEntity owner)
+	{
+		#ifdef ENABLE_DIAG
+		DiagInit(owner);
+		#endif
+		
+		SCR_BaseGameMode baseGameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (baseGameMode)
+			s_HealthSettings = baseGameMode.GetGameModeHealthSettings();
+		
+		LIMB_GROUPS = {};
+		SCR_Enum.GetEnumValues(ECharacterHitZoneGroup, LIMB_GROUPS);
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(owner);
+		if (!character)
+			return;
+		
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		if (controller)
+			controller.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
+			
+		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
+		if (rpl && !GetDefaultHitZone().IsProxy())
+		{		
+			SCR_CharacterBuoyancyComponent charBuoyancyComp = SCR_CharacterBuoyancyComponent.Cast(owner.FindComponent(SCR_CharacterBuoyancyComponent));
+			if (charBuoyancyComp)
+				charBuoyancyComp.GetOnWaterEnter().Insert(OnWaterEnter);
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Check whether character health state meets requirements for consciousness
+	protected bool ShouldBeUnconscious()
+	{
+		HitZone bloodHZ = GetBloodHitZone();
+		if (!bloodHZ)
+			return false;
+		
+		ECharacterBloodState bloodState = bloodHZ.GetDamageState();
+		if (bloodHZ.GetDamageStateThreshold(bloodState) <= bloodHZ.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS))	
+			return true;
+				
+		HitZone resilienceHZ = GetResilienceHitZone();
+		if (!resilienceHZ)
+			return false;
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return false;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return false;
+
+		ECharacterResilienceState resilienceState = resilienceHZ.GetDamageState();
+
+		if (controller.IsUnconscious())
+		{		
+			if (resilienceHZ.GetDamageStateThreshold(resilienceState) <= resilienceHZ.GetDamageStateThreshold(ECharacterResilienceState.WEAKENED))
+				return true;
+		}
+		else
+		{
+			if (resilienceHZ.GetDamageStateThreshold(resilienceState) <= resilienceHZ.GetDamageStateThreshold(ECharacterResilienceState.UNCONSCIOUS))
+				return true;
+		}
+			
+		return false;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	void UpdateConsciousness()
+	{
+		bool unconscious = ShouldBeUnconscious();
+		
+		// If unconsciousness is not allowed, kill character
+		// Also kill the character if the blood state is not high enough for being unconsciousness
+		if (unconscious)
+		{
+			if (!GetPermitUnconsciousness() || (m_pBloodHitZone && m_pBloodHitZone.GetDamageState() == ECharacterBloodState.DESTROYED))
+			{
+				Kill(GetInstigator());
+				return;
+			}
+			else if (s_HealthSettings && s_HealthSettings.GetIfKillIndefiniteUnconscious() && IsIndefinitelyUnconscious())
+			{
+				Kill(GetInstigator());
+				return;
+			}
+		}
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+
+		controller.SetUnconscious(unconscious);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Force unconsciousness regardless of health
+	//! \param resilienceHealth Desired healthScaled of resilienceHZ. Must be below unconscious-threshold to work
+	void ForceUnconsciousness(float resilienceHealth = 0)
+	{
+		if (!GetPermitUnconsciousness())
+			return;
+		
+		HitZone resilienceHZ = GetResilienceHitZone();
+		if (!resilienceHZ)
+			return;
+		
+		resilienceHZ.HandleDamage(resilienceHZ.GetMaxHealth() - (resilienceHZ.GetMaxHealth() * resilienceHealth), EDamageType.TRUE, null);
+		UpdateConsciousness();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
+	{
+		if (newLifeState == ECharacterLifeState.INCAPACITATED)
+		{
+			SoundKnockout();
+		}
+		else if (newLifeState == ECharacterLifeState.DEAD)
+		{
+			if (IsRplReady() || !GetDefaultHitZone().IsProxy())
+				SoundDeath(previousLifeState);
+		
+			RemoveAllBleedingParticlesAfterDeath();
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Insert armor data from clothing item prefab into map, create map if null
+	void InsertArmorData(notnull SCR_CharacterHitZone charHitZone, SCR_ArmoredClothItemData attributes)
+	{
+		if (!m_mClothItemDataMap)
+			m_mClothItemDataMap = new map<SCR_CharacterHitZone, ref SCR_ArmoredClothItemData>();
+		
+		m_mClothItemDataMap.Insert(charHitZone, attributes);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Remove armor data from clothing item prefab from map, delete map if empty
+	void RemoveArmorData(notnull SCR_CharacterHitZone charHitZone)
+	{
+		if (!m_mClothItemDataMap)
+			return;
+		
+		if (m_mClothItemDataMap.Contains(charHitZone))
+			m_mClothItemDataMap.Remove(charHitZone);
+		
+		if (m_mClothItemDataMap.IsEmpty())
+			m_mClothItemDataMap = null;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! If !remove, take data from prefab and insert to map as class. If remove, remove this hitZone's stored data from map
+	void UpdateArmorDataMap(notnull SCR_ArmoredClothItemData armorAttr, bool remove)
+	{
+		foreach (string hitZoneName : armorAttr.m_aProtectedHitZones)
+		{
+			SCR_CharacterHitZone hitZone = SCR_CharacterHitZone.Cast(GetHitZoneByName(hitZoneName));
+			if (hitZone)
+			{
+				if (remove)
+				{
+					RemoveArmorData(hitZone);
+					continue;
+				}
+				
+				SCR_ArmoredClothItemData armoredClothItemData;
+				armoredClothItemData = new SCR_ArmoredClothItemData(
+					armorAttr.m_eProtection,
+					armorAttr.m_aProtectedHitZones,
+					armorAttr.m_aProtectedDamageTypes,
+					armorAttr.m_MaterialResourceName
+				);
+
+				InsertArmorData(hitZone, armoredClothItemData);
+			}
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	override GameMaterial OverrideHitMaterial(HitZone struckHitzone)
+	{
+		SCR_CharacterHitZone charHitZone = SCR_CharacterHitZone.Cast(struckHitzone);
+		if (!charHitZone)
+			return null;
+		
+		SCR_ArmoredClothItemData armorData = GetArmorData(charHitZone);
+		if (!armorData)
+			return null;
+		
+		if (!armorData.m_Material)
+			return null;
+		
+		return armorData.m_Material.GetResource().ToBaseContainer();
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Get data from m_mClothItemDataMap
+	SCR_ArmoredClothItemData GetArmorData(notnull SCR_CharacterHitZone charHitZone)
+	{
+		if (!m_mClothItemDataMap)
+			return null;
+		
+		if (m_mClothItemDataMap.Contains(charHitZone))
+			return m_mClothItemDataMap.Get(charHitZone);
+		
+		return null;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Get protection value of particular hitZone stored on m_mClothItemDataMap
+	float GetArmorProtection(notnull SCR_CharacterHitZone charHitZone, EDamageType damageType)
+	{
+		SCR_ArmoredClothItemData localArmorData = GetArmorData(charHitZone);
+		if (!localArmorData)
+			return 0;
+
+		foreach (EDamageType protectedType : localArmorData.m_aProtectedDamageTypes)
+		{
+			if (damageType == protectedType)
+				return localArmorData.m_eProtection;
+		}
+		
+		return 0;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Function called from SCR_ArmorDamageManagerComponent in case player is shot in armor. Applies effects
+	void ArmorHitEventEffects(float damage)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+		
+		CharacterInputContext context = controller.GetInputContext();
+		if (context)
+			context.SetHit(EHitReactionType.HIT_REACTION_LIGHT, 0);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Function called from SCR_ArmorDamageManagerComponent in case player is shot in armor. Applies damage
+	void ArmorHitEventDamage(EDamageType type, float damage, IEntity instigator)
+	{
+		if (m_pResilienceHitZone)
+			m_pResilienceHitZone.HandleDamage(damage, type, instigator);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	override void OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
+	{
+		super.OnDamageEffectAdded(dmgEffect);
+
+		if (dmgEffect.GetAffectedHitZone().IsProxy())
+			return;
+		
+		if (dmgEffect.GetDamageType() == EDamageType.HEALING)
+			SoundHeal();
+			
+		if (dmgEffect.GetDamageType() == EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
+		{
+			if (GetState() == EDamageState.DESTROYED)
+				return;
+			
+			//Terminate passive regeneration on bloodHZ when bleeding effect is added
+			array<ref PersistentDamageEffect> effects = GetAllPersistentEffectsOnHitZone(m_pBloodHitZone);
+			foreach (PersistentDamageEffect effect : effects)
+			{
+				if (SCR_PassiveHitZoneRegenDamageEffect.Cast(effect))
+					effect.Terminate();
+			}
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	override void OnDamageEffectRemoved(notnull SCR_DamageEffect dmgEffect)
+	{
+		super.OnDamageEffectRemoved(dmgEffect);
+
+		if (dmgEffect.GetAffectedHitZone().IsProxy())
+			return;
+		
+		EDamageType localDamageType = dmgEffect.GetDamageType();
+					
+		if (localDamageType == EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
+		{
+			//If no longer bleeding, plan blood regeneration
+			if (!IsBleeding())
+				RegenVirtualHitZone(m_pBloodHitZone);
+		}
+		
+		// if a healing effect is removed, it may mean all damage was healed. So try to clear the history in this case
+		if (localDamageType == EDamageType.HEALING || localDamageType == EDamageType.REGENERATION)
+			TryClearDamageHistory();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Hijack collisiondamage in case it's applied to defaultHZ, since that means it's falldamage.
+	override bool HijackDamageHandling(notnull BaseDamageContext damageContext)
+	{
+		// Handle falldamage. Falldamage is applied to defaultHZ, so it's propegated down to physical hitZones manually, then back up to the health HZ like normal damage.
+		if (damageContext.damageType == EDamageType.COLLISION && damageContext.struckHitZone == GetDefaultHitZone())
+		{
+			if (damageContext.damageValue > damageContext.struckHitZone.GetDamageThreshold())
+				HandleFallDamage(damageContext.damageValue);
+	
+			return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SoundHit(bool critical, EDamageType damageType)
+	{
+		// Ignore if knocked out or dead
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return;
+		
+		if (character.GetCharacterController().GetLifeState() != ECharacterLifeState.ALIVE)
+			return;
+
+		if (m_CommunicationSound)
+			m_CommunicationSound.SoundEventHit(critical, damageType);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Tell m_CommunicationSound to stop character from screaming, otherwise ignore
+	void SoundKnockout()
+	{
+		if (m_CommunicationSound && m_CommunicationSound.IsPlaying())
+			m_CommunicationSound.SoundEventDeath(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Tell m_CommunicationSound that this character is now dead
+	void SoundDeath(int previousLifestate)
+	{
+		bool silent;
+
+		// Silent if killed with headshot
+		if (m_pHeadHitZone && m_pHeadHitZone.GetDamageState() == EDamageState.DESTROYED)
+			silent = true;
+
+		// Silent if already knocked out
+		if (previousLifestate == ECharacterLifeState.INCAPACITATED)
+			silent = true;
+
+		if (m_CommunicationSound)
+			m_CommunicationSound.SoundEventDeath(silent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SoundHeal()
+	{
+		// Ignore if knocked out or dead
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (character)
+		{
+			if (character.GetCharacterController().GetLifeState() != ECharacterLifeState.ALIVE)
+				return;
+		}
+		
+		if (m_CommunicationSound)
+			m_CommunicationSound.DelayedSoundEventPriority(SCR_SoundEvent.SOUND_VOICE_PAIN_RELIEVE, SCR_ECommunicationSoundEventPriority.SOUND_PAIN_RELIEVE, SCR_CommunicationSoundComponent.DEFAULT_EVENT_PRIORITY_DELAY);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//!	Clean up blood particle sources after death
+	void RemoveAllBleedingParticlesAfterDeath()
+	{
+		float bleedingRate;
+		if (m_pBloodHitZone)
+			bleedingRate = DEATH_BLEEDOUT_SCALE * m_pBloodHitZone.GetTotalBleedingAmount();
+
+		float delay;
+		if (bleedingRate > 0)
+			delay = m_pBloodHitZone.GetHealth() / bleedingRate;
+
+		// Damage over time is not simulated after character death
+		GetGame().GetCallqueue().Remove(RemoveAllBleedingParticles);
+		GetGame().GetCallqueue().CallLater(RemoveAllBleedingParticles, delay * 1000);
+	}
+	
+	//! \param[in] hitZone Hitzone used to get bleeding areas to visualize
+	//! \param[in] immediateBloodEffect Intensity of effect. Intensity will be rounded to nearest round number. Must be => 1
+	//-----------------------------------------------------------------------------------------------------------
+	void AddBloodToClothes(notnull SCR_CharacterHitZone hitZone, float immediateBloodEffect)
+	{
+		if (!m_bAllowBloodyClothes || immediateBloodEffect < 1)
+			return;
+		
+		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(GetOwner().FindComponent(EquipedLoadoutStorageComponent));
+		if (!loadoutStorage)
+			return;
+		
+		array<ref LoadoutAreaType> bleedingAreas = hitZone.GetBleedingAreas();
+		
+		IEntity clothEntity;
+		ParametricMaterialInstanceComponent materialComponent;
+		foreach (LoadoutAreaType bleedingArea : bleedingAreas)
+		{
+			clothEntity = loadoutStorage.GetClothFromArea(bleedingArea.Type());
+			if (!clothEntity)
+				continue;
+			
+			materialComponent = ParametricMaterialInstanceComponent.Cast(clothEntity.FindComponent(ParametricMaterialInstanceComponent));
+			if (!materialComponent)
+				continue;
+			
+			float newBloodValue = materialComponent.GetUserParam2() + Math.Ceil(immediateBloodEffect * 0.1);
+			materialComponent.SetUserParam2(Math.Clamp(newBloodValue, 1, 255));
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanBeHealed(bool ignoreHealingDOT = true)
+	{
+		array<ref PersistentDamageEffect> effects = {};
+		GetPersistentEffects(effects);
+		
+		// if there is any physical damage or a bleeding, you can be healed
+		array<HitZone> hitZones = {};
+		GetAllHitZonesInHierarchy(hitZones);
+		foreach (HitZone hitZone : hitZones)
+		{
+			if (hitZone && hitZone.GetDamageState() != EDamageState.UNDAMAGED)
+				return true;
+		}
+		
+		if (IsBleeding())
+			return true;
+		
+		// if there is no physical damage or bleeding, healing DOT could still classify you as injured if ignoreHealingDOT is false
+		if (ignoreHealingDOT)
+			return false;
+		
+		if (IsDamageEffectPresent(SCR_PhysicalHitZonesRegenDamageEffect) || IsDamageEffectPresent(SCR_PassiveHitZoneRegenDamageEffect))
+			return true;
+		
+		return false;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! will fully heal the character 
+	//! \param ignoreHealingDOT Enabling this bool will remove all persistent damage effects, including the ones spawned by healthItems. Otherwise just bleeding is removed and regeneration effects are retained
+	override void FullHeal(bool ignoreHealingDOT = true)
+	{
+		if (!ignoreHealingDOT)
+		{
+			array<ref PersistentDamageEffect> effects = {};
+			GetPersistentEffects(effects);
+			
+			foreach(PersistentDamageEffect effect : effects)
+			{
+				effect.Terminate();	
+			}
+		}
+		else
+		{
+			RemoveAllBleedings();
+		}
+		
+		super.FullHeal(ignoreHealingDOT);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	protected void TryClearDamageHistory()
+	{
+		// do not clear damage history if there are positive OR negative effects left on the character
+		if (CanBeHealed(false))
+			return;
+		
+		ClearDamageHistory();
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	void SetBloodHitZone(HitZone hitZone)
+	{
+		m_pBloodHitZone = SCR_CharacterBloodHitZone.Cast(hitZone);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	SCR_CharacterBloodHitZone GetBloodHitZone()
+	{
+		return m_pBloodHitZone;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Scale for effects that become worsened with blood level  
+	float GetResilienceRegenScale()
+	{
+		if (!m_pBloodHitZone)
+			return 1;
+
+		float criticalBloodLevel = m_pBloodHitZone.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS);
+		if (criticalBloodLevel >= 1)
+			return 0;
+
+		float currentBloodLevel = m_pBloodHitZone.GetDamageStateThreshold(m_pBloodHitZone.GetDamageState());
+		if (currentBloodLevel < criticalBloodLevel)
+			return 0;
+
+		float resilienceRegenScale = (currentBloodLevel - criticalBloodLevel) / (1 - criticalBloodLevel);
+		
+		// Change regen scale when unconscious
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (character)
+		{
+			if (character.GetCharacterController().GetLifeState() == ECharacterLifeState.INCAPACITATED)
+				resilienceRegenScale *= m_fUnconsciousRegenerationScale;
+		}
+		
+		return resilienceRegenScale;
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	void SetBleedingScale(float rate, bool changed)
+	{
+		m_fDOTScale = rate;
+		m_bDOTScaleChangedByGM = changed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+ 	float GetBleedingScale()
+ 	{
+		if (!s_HealthSettings || m_bDOTScaleChangedByGM)
+			return m_fDOTScale;
+		
+		return s_HealthSettings.GetBleedingScale();
+ 	}		
+ 	
+ 	//-----------------------------------------------------------------------------------------------------------
+	void SetRegenScale(float rate, bool changed)
+	{
+		m_fRegenScale = rate;
+		m_bRegenScaleChangedByGM = changed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Return base regen scale
+ 	float GetRegenScale()
+ 	{
+		if (!s_HealthSettings || m_bRegenScaleChangedByGM)
+			return m_fRegenScale;
+		
+		return s_HealthSettings.GetRegenScale();
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Returns whether unconsciousness is permitted. Character prefab has highest authority, then gamemaster, then gamemode configuration
+ 	bool GetPermitUnconsciousness()
+ 	{
+		if (!m_bPermitUnconsciousness)
+			return false;
+		
+		if (!s_HealthSettings || m_bUnconsciousnessSettingsChangedByGM)
+			return m_bPermitUnconsciousness;
+		
+		return s_HealthSettings.IsUnconsciousnessPermitted();
+ 	}		
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Returns whether this character will remain unconscious with no chance to wake up without intervention
+	protected bool IsIndefinitelyUnconscious(bool onlyPlayers = true)
+ 	{
+		if (onlyPlayers && !EntityUtils.IsPlayer(GetOwner()))
+			return false;
+		
+		if (!m_pBloodHitZone || !m_pResilienceHitZone)
+			return false;
+		
+		// if bloodHitZone is below unconscious threshold you will not wake up without a medic
+		if (m_pBloodHitZone.GetDamageState() >= ECharacterBloodState.UNCONSCIOUS)
+			return true;
+		
+		// if unconscious and bleeding, you will not wake if your blood reaches below the ECharacterBloodState.UNCONSCIOUS treshold.
+		if (IsBleeding())
+		{
+			float timeToWake;
+			float timeToUnconscious = (m_pBloodHitZone.GetHealth() - (m_pBloodHitZone.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS) * m_pBloodHitZone.GetMaxHealth())) / m_pBloodHitZone.GetTotalBleedingAmount();
+			
+			DotDamageEffect regenEffect = DotDamageEffect.Cast(FindDamageEffectOnHitZone(SCR_PassiveHitZoneRegenDamageEffect, GetResilienceHitZone()));
+			if (regenEffect)
+				timeToWake = ((m_pResilienceHitZone.GetDamageStateThreshold(ECharacterResilienceState.WEAKENED) * m_pResilienceHitZone.GetMaxHealth()) - m_pResilienceHitZone.GetHealth()) / -regenEffect.GetDPS();
+
+			if (timeToUnconscious < timeToWake)
+				return true;
+		}
+		
+		return false;
+ 	}	
+ 	
+	//-----------------------------------------------------------------------------------------------------------
+	void SetPermitUnconsciousness(bool permit, bool changed)
+ 	{
+ 		m_bPermitUnconsciousness = permit;
+		m_bUnconsciousnessSettingsChangedByGM = changed;
+ 	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	void SetOverrideCharacterMedicalGMAttribute(bool permit)
+	{
+		m_bOverrideCharacterMedicalGMAttribute = permit;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	bool GetOverrideCharacterMedicalGMAttribute()
+	{
+		return m_bOverrideCharacterMedicalGMAttribute;
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	void SetResilienceHitZone(HitZone hitZone)
+	{
+		m_pResilienceHitZone = SCR_CharacterResilienceHitZone.Cast(hitZone);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	SCR_CharacterResilienceHitZone GetResilienceHitZone()
+	{
+		return m_pResilienceHitZone;
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	void SetHeadHitZone(HitZone hitZone)
+	{
+		m_pHeadHitZone = SCR_CharacterHeadHitZone.Cast(hitZone);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	HitZone GetHeadHitZone()
+	{
+		return m_pHeadHitZone;
+	}
+		
+	//-----------------------------------------------------------------------------------------------------------
+	float GetTourniquetStrengthMultiplier()
+	{
+		return m_fTourniquetStrengthMultiplier;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	/*! Add bleeding effect to hitzone
+	\param hitZone Hitzone to get bleeding rate from and add effect to
+	\param colliderDescriptorIndex Collider descriptor index
+	*/
+	void AddBleedingEffectOnHitZone(notnull SCR_CharacterHitZone hitZone, int colliderDescriptorIndex = -1)
+	{
+		// This code is handled on authority only
+		if (hitZone.IsProxy())
+			return;
+		
+		// In case bleeding is started outside of normal context, full health will prevent DOT. This block will circumvent this issue
+		float hitZoneDamageMultiplier = hitZone.GetHealthScaled();
+		float bleedingRate = hitZone.GetMaxBleedingRate() - hitZone.GetMaxBleedingRate() * hitZoneDamageMultiplier;
+
+		SCR_BleedingDamageEffect hitZoneBleeding();
+		if (colliderDescriptorIndex == -1)
+			colliderDescriptorIndex = Math.RandomInt(0, hitZone.GetNumColliderDescriptors() - 1);
+			
+		hitZoneBleeding.m_iColliderDescriptorIndex = colliderDescriptorIndex;
+		hitZoneBleeding.SetDPS(bleedingRate * GetBleedingScale());
+		hitZoneBleeding.SetMaxDuration(0);
+		hitZoneBleeding.SetDamageType(EDamageType.BLEEDING);
+		hitZoneBleeding.SetAffectedHitZone(hitZone);
+		hitZoneBleeding.SetInstigator(GetInstigator());
+		AddDamageEffect(hitZoneBleeding);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Register hitzone in array as bleeding
+	void AddBleedingToArray(notnull HitZone hitZone)
+	{
+		if (!m_aBleedingHitZones)
+			m_aBleedingHitZones = {};
+
+		if (!m_aBleedingHitZones.Contains(hitZone))
+			m_aBleedingHitZones.Insert(hitZone);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Unregister hitzone from array
+	void RemoveBleedingFromArray(notnull HitZone hitZone)
+	{
+		if (m_aBleedingHitZones)
+		{
+			m_aBleedingHitZones.RemoveItem(hitZone);
+			if (m_aBleedingHitZones.IsEmpty())
+				m_aBleedingHitZones = null;
+		}
+	}
+	
+	array<HitZone> GetBleedingHitZones()
+	{
+		return m_aBleedingHitZones;
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Called to start bleeding effect on a specificied bone
+	void CreateBleedingParticleEffect(notnull HitZone hitZone, int colliderDescriptorIndex)
+	{
+		if (System.IsConsoleApp())
+			return;
+		
+		// Play Bleeding particle
+		if (m_sBleedingParticle.IsEmpty())
+			return;
+
+		RemoveBleedingParticleEffect(hitZone);
+
+		// TODO: Blood traces on ground that should be left regardless of clothing, perhaps just delayed
+		SCR_CharacterHitZone characterHitZone = SCR_CharacterHitZone.Cast(hitZone);
+		if (characterHitZone.IsCovered())
+			return;
+		
+		array<HitZone> groupHitZones = {};
+		GetHitZonesOfGroup(characterHitZone.GetHitZoneGroup(), groupHitZones);
+		float bleedingRate;
+			
+		foreach (HitZone groupHitZone : groupHitZones)
+		{
+			SCR_RegeneratingHitZone regenHitZone = SCR_RegeneratingHitZone.Cast(groupHitZone);
+			if (regenHitZone)
+				bleedingRate +=	regenHitZone.GetHitZoneDamageOverTime(EDamageType.BLEEDING);
+		}
+		
+		if (bleedingRate == 0 || m_fBleedingParticleRateScale == 0)
+			return;
+
+		// Get bone node
+		vector transform[4];
+		int boneIndex;
+		int boneNode;
+		if (!hitZone.TryGetColliderDescription(GetOwner(), colliderDescriptorIndex, transform, boneIndex, boneNode))
+			return;
+
+		// Create particle emitter
+		ParticleEffectEntitySpawnParams spawnParams();
+		spawnParams.Parent = GetOwner();
+		spawnParams.PivotID = boneNode;
+		ParticleEffectEntity particleEmitter = ParticleEffectEntity.SpawnParticleEffect(m_sBleedingParticle, spawnParams);
+		if (System.IsConsoleApp())
+			return;		
+		
+		if (!particleEmitter)
+		{
+			Print("Particle emitter: " + particleEmitter.ToString() + " There was a problem with creating the particle emitter: " + m_sBleedingParticle, LogLevel.WARNING);
+			return;
+		}
+
+		// Track particle emitter in array
+		if (!m_mBleedingParticles)
+			m_mBleedingParticles = new map<HitZone, ParticleEffectEntity>;
+
+		m_mBleedingParticles.Insert(hitZone, particleEmitter);
+
+		// Play particles
+		Particles particles = particleEmitter.GetParticles();
+		if (particles)
+			particles.MultParam(-1, EmitterParam.BIRTH_RATE, bleedingRate * m_fBleedingParticleRateScale);
+		else
+			Print("Particle: " + particles.ToString() + " Bleeding particle likely not created properly: " + m_sBleedingParticle, LogLevel.WARNING);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Remove all bleeding particle effects from all bleeding hitZones
+	void RemoveAllBleedingParticles()
+	{
+		if (IsBleeding())
+			return;
+		
+		HitZone hitZone;
+		array<HitZone> hitZones = {};
+		array<ref PersistentDamageEffect> damageEffects = GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
+		foreach (PersistentDamageEffect effect : damageEffects)
+		{
+			hitZone = effect.GetAffectedHitZone();
+			if (!hitZones.Contains(hitZone))
+				hitZones.Insert(hitZone);
+		}
+		
+		foreach (HitZone hz : hitZones)
+		{
+			RemoveBleedingParticleEffect(hz);
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	/*! Get particle effect on a specified hitZone
+	\param hitZone Bleeding HitZone to get particle effect for
+	*/
+	void RemoveBleedingParticleEffect(HitZone hitZone)
+	{
+		if (!m_mBleedingParticles)
+			return;
+
+		ParticleEffectEntity particleEmitter = m_mBleedingParticles.Get(hitZone);
+		if (particleEmitter)
+		{
+			particleEmitter.StopEmission();
+			m_mBleedingParticles.Remove(hitZone);
+		}
+
+		if (m_mBleedingParticles.IsEmpty())
+			m_mBleedingParticles = null;
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Stop all bleeding
+	void RemoveAllBleedings()
+	{
+		TerminateDamageEffectsOfType(SCR_BleedingDamageEffect);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Terminate all bleeding effects on every hitZone of a group
+	void RemoveGroupBleeding(ECharacterHitZoneGroup charHZGroup)
+	{
+		if (!IsBleeding())
+			return;
+		
+		if (charHZGroup == ECharacterHitZoneGroup.VIRTUAL)
+			return;
+
+		array<ref PersistentDamageEffect> effects = {};
+		array<HitZone> hitZones = {};
+		GetHitZonesOfGroup(charHZGroup, hitZones);
+		
+		foreach (HitZone hitZone : hitZones)
+		{
+			effects = GetAllPersistentEffectsOnHitZone(hitZone);
+			foreach (PersistentDamageEffect effect : effects)
+			{
+				if (effect.GetDamageType() == EDamageType.BLEEDING)
+					TerminateDamageEffect(effect)
+			}
+		}
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Add bleeding to a particular physical hitZone
+	void AddParticularBleeding(string hitZoneName = "Chest", ECharacterDamageState intensityEnum = ECharacterDamageState.WOUNDED, float intensityFloat = -1)
+	{
+		SCR_CharacterHitZone targetHitZone = SCR_CharacterHitZone.Cast( GetHitZoneByName(hitZoneName));
+
+		if (!targetHitZone || targetHitZone.IsProxy())
+			return;
+		
+		// If someone wants to add bleeding to undamaged hitZone, return
+		if (intensityEnum == ECharacterDamageState.UNDAMAGED)
+			return;
+		
+		// if intensityFloat is unset use the enum instead
+		if (intensityFloat < 0)
+			targetHitZone.SetHealthScaled(targetHitZone.GetDamageStateThreshold(ECharacterDamageState.WOUNDED));
+		else
+			targetHitZone.SetHealthScaled(intensityFloat);
+
+		AddBleedingEffectOnHitZone(targetHitZone);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Add bleeding to a random physical hitZone
+	void AddRandomBleeding()
+	{
+		array<HitZone> hitZones = {};
+		array<HitZone> validHitZones = {};
+		GetPhysicalHitZones(hitZones);
+
+		foreach (HitZone hitZone: hitZones)
+		{
+			//Is character hz
+			SCR_CharacterHitZone characterHitZone = SCR_CharacterHitZone.Cast(hitZone);
+			if (!characterHitZone)
+				return;
+			
+			// Is not already bleeding
+			SCR_RegeneratingHitZone regenHitZone = SCR_RegeneratingHitZone.Cast(hitZone);
+			if (!regenHitZone || regenHitZone.GetHitZoneDamageOverTime(EDamageType.BLEEDING))
+				continue;
+
+			validHitZones.Insert(characterHitZone);
+		}
+
+		if (validHitZones.IsEmpty())
+			return;
+		
+		SCR_CharacterHitZone hitZone = SCR_CharacterHitZone.Cast(validHitZones.GetRandomElement());
+		AddBleedingEffectOnHitZone(hitZone);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	ECharacterHitZoneGroup FindAssociatedHitZoneGroup(EBandagingAnimationBodyParts bodyPartToBandage)
+	{
+		array<HitZone> hitZones = {};
+		
+		GetPhysicalHitZones(hitZones);
+		SCR_CharacterHitZone charHitZone;
+		
+		foreach (HitZone hitZone : hitZones)
+		{
+			charHitZone = SCR_CharacterHitZone.Cast(hitZone);
+			if (charHitZone && charHitZone.GetBodyPartToHeal() == bodyPartToBandage)
+				return charHitZone.GetHitZoneGroup();		
+		}
+				
+		return null;
+	}	
+	
+	//-----------------------------------------------------------------------------------------------------------
+	EBandagingAnimationBodyParts FindAssociatedBandagingBodyPart(ECharacterHitZoneGroup hitZoneGroup)
+	{
+		array<HitZone> hitZones = {};
+		
+		GetPhysicalHitZones(hitZones);
+		SCR_CharacterHitZone charHitZone;
+		
+		foreach (HitZone hitZone : hitZones)
+		{
+			charHitZone = SCR_CharacterHitZone.Cast(hitZone);
+			if (charHitZone && charHitZone.GetHitZoneGroup() == hitZoneGroup)
+				return charHitZone.GetBodyPartToHeal();		
+		}
+				
+		return null;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	void GetHealingAnimHitzones(EBandagingAnimationBodyParts eBandagingAnimBodyParts, out notnull array<HitZone> GroupHitZones)
+	{
+		array<HitZone> allGroupedHitZones = {};
+		GetAllHitZones(allGroupedHitZones);
+		SCR_CharacterHitZone charHitZone;
+		
+		foreach (HitZone hitZone : allGroupedHitZones)
+		{
+			charHitZone = SCR_CharacterHitZone.Cast(hitZone);
+			if (charHitZone && charHitZone.GetBodyPartToHeal() == eBandagingAnimBodyParts)
+				GroupHitZones.Insert(hitZone);
+		}
+	}
+		
+	//-----------------------------------------------------------------------------------------------------------
+	float GetGroupHealthScaled(ECharacterHitZoneGroup hitZoneGroup)
+	{
+		float totalGroupHealth;
+		float hitZoneQuantity;
+		
+		array<HitZone> allGroupedHitZones = {};
+		GetAllHitZones(allGroupedHitZones);
+		SCR_CharacterHitZone charHitZone;
+		
+		foreach (HitZone hitZone : allGroupedHitZones)
+		{
+			charHitZone = SCR_CharacterHitZone.Cast(hitZone);
+			if (!charHitZone || charHitZone.GetHitZoneGroup() != hitZoneGroup)
+				continue;
+			
+			totalGroupHealth += charHitZone.GetHealthScaled();	
+			hitZoneQuantity ++;
+		}
+		
+		if (hitZoneQuantity <= 0)
+			return 0;
+		
+		return totalGroupHealth / hitZoneQuantity;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	override float GetGroupDamageOverTime(ECharacterHitZoneGroup hitZoneGroup, EDamageType damageType)
+	{
+		float totalGroupDOT;
+		array<HitZone> groupHitZones = {};
+		GetHitZonesOfGroup(hitZoneGroup, groupHitZones);
+		DotDamageEffect dotEffect;
+		
+		array<ref PersistentDamageEffect> effects = {};
+		foreach (HitZone hitZone : groupHitZones)
+		{
+			SCR_RegeneratingHitZone hz = SCR_RegeneratingHitZone.Cast(hitZone);
+			if (hz)
+				totalGroupDOT += hz.GetHitZoneDamageOverTime(damageType);
+		}
+
+		return totalGroupDOT;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	bool GetGroupTourniquetted(ECharacterHitZoneGroup hitZoneGroup)
+	{
+		return m_aTourniquettedGroups && m_aTourniquettedGroups.Contains(hitZoneGroup);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTourniquettedGroup(ECharacterHitZoneGroup hitZoneGroup, bool setTourniquetted)
+	{
+		if (setTourniquetted)
+		{
+			if (!m_aTourniquettedGroups)
+				m_aTourniquettedGroups = {};
+			else if (m_aTourniquettedGroups.Contains(hitZoneGroup))
+				return;
+			
+			m_aTourniquettedGroups.Insert(hitZoneGroup);
+		}
+		else
+		{
+			if (!m_aTourniquettedGroups || !m_aTourniquettedGroups.Contains(hitZoneGroup))
+				return;
+			else
+				m_aTourniquettedGroups.RemoveItem(hitZoneGroup);
+	
+			if (m_aTourniquettedGroups.IsEmpty())
+				m_aTourniquettedGroups = null;
+		}
+		
+		UpdateCharacterGroupDamage(hitZoneGroup);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	bool GetGroupIsBeingHealed(ECharacterHitZoneGroup hitZoneGroup)
+	{
+		return m_aBeingHealedGroup && m_aBeingHealedGroup.Contains(hitZoneGroup);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetGroupIsBeingHealed(ECharacterHitZoneGroup hitZoneGroup, bool setIsBeingHealed)
+	{
+		if (setIsBeingHealed)
+		{
+			if (!m_aBeingHealedGroup)
+				m_aBeingHealedGroup = {};
+			else if (m_aBeingHealedGroup.Contains(hitZoneGroup))
+				return;
+
+			m_aBeingHealedGroup.Insert(hitZoneGroup);
+		}
+		else
+		{
+			if (!m_aBeingHealedGroup || !m_aBeingHealedGroup.Contains(hitZoneGroup))
+				return;
+			else
+				m_aBeingHealedGroup.RemoveItem(hitZoneGroup);
+
+			if (m_aBeingHealedGroup.IsEmpty())
+				m_aBeingHealedGroup = null;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetGroupSalineBagged(ECharacterHitZoneGroup hitZoneGroup)
+	{
+		return m_aSalineBaggedGroups && m_aSalineBaggedGroups.Contains(hitZoneGroup);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] hitZoneGroup
+	//! \param[in] setSalineBagged
+	void SetSalineBaggedGroup(ECharacterHitZoneGroup hitZoneGroup, bool setSalineBagged)
+	{
+		if (setSalineBagged)
+		{
+			if (!m_aSalineBaggedGroups)
+				m_aSalineBaggedGroups = {};
+			else if (m_aSalineBaggedGroups.Contains(hitZoneGroup))
+				return;
+
+			m_aSalineBaggedGroups.Insert(hitZoneGroup);
+		}
+		else
+		{
+			if (!m_aSalineBaggedGroups || !m_aSalineBaggedGroups.Contains(hitZoneGroup))
+				return;
+			else
+				m_aSalineBaggedGroups.RemoveItem(hitZoneGroup);
+
+			if (m_aSalineBaggedGroups.IsEmpty())
+				m_aSalineBaggedGroups = null;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! the official and globally used way of checking if bleeding tests for any PERSISTENT damage effects of EDamageType.BLEEDING. 
+	bool IsBleeding()
+	{
+		array<ref PersistentDamageEffect> effects = {};
+		GetPersistentEffects(effects);
+		foreach (PersistentDamageEffect effect : effects)
+		{
+			if (effect.GetDamageType() == EDamageType.BLEEDING)
+				return true;
+		}
+		
+		return false;
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	HitZone GetMostDOTHitZone(EDamageType damageType, bool includeVirtualHZs = false, array<EHitZoneGroup> allowedGroups = null)
+	{
+		float highestDOT;
+		float localDOT;
+		HitZone highestDOTHitZone;
+		array<HitZone> hitZones = {};
+		
+		if (includeVirtualHZs)
+			GetAllHitZones(hitZones);
+		else
+			GetPhysicalHitZones(hitZones);
+		
+		foreach (HitZone hitZone : hitZones)
+		{
+			if (allowedGroups)
+			{
+				SCR_CharacterHitZone charHitZone = SCR_CharacterHitZone.Cast(hitZone);
+				if (!charHitZone)
+					continue;
+				
+				if (!allowedGroups.Contains(charHitZone.GetHitZoneGroup()))
+					continue;
+			}
+			
+			DotDamageEffect dotEffect;
+			array<ref PersistentDamageEffect> damageEffects = GetAllPersistentEffectsOnHitZone(hitZone);
+			foreach (PersistentDamageEffect effect : damageEffects)	
+			{
+				if (damageType != effect.GetDamageType())
+					continue;
+				
+				dotEffect = DotDamageEffect.Cast(effect);
+				if (!dotEffect)
+					continue;
+				
+				localDOT += dotEffect.GetDPS();
+			}
+			
+			if (localDOT > highestDOT)
+			{
+				highestDOT = localDOT;
+				highestDOTHitZone = hitZone;
+			}
+		}
+		return highestDOTHitZone;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	static void GetAllLimbs(notnull out array<ECharacterHitZoneGroup> limbs)
+	{
+		limbs.Copy(LIMB_GROUPS);
+	}	
+	
+	//-----------------------------------------------------------------------------------------------------------
+	static void GetAllExtremities(notnull out array<ECharacterHitZoneGroup> limbs)
+	{
+		limbs.Copy(EXTREMITY_LIMB_GROUPS);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	void UpdateCharacterGroupDamage(ECharacterHitZoneGroup hitZoneGroup)
+	{
+		const float AIMING_DAMAGE_MULTIPLIER = 4;
+		const float TOURNIQUETTED_LEG_DAMAGE = 0.7;
+		const float TOURNIQUETTED_ARMS_DAMAGE = 0.7;
+		// Updated OnDamageStateChanged, movement damage is equal to the accumulative damage of all hitZones in the limb divided by the amount of limbs of type
+		if (hitZoneGroup == ECharacterHitZoneGroup.LEFTLEG || hitZoneGroup == ECharacterHitZoneGroup.RIGHTLEG)
+		{
+			float leftLegDamage;
+			if (GetGroupTourniquetted(ECharacterHitZoneGroup.LEFTLEG))
+				leftLegDamage = TOURNIQUETTED_LEG_DAMAGE;
+			else
+				leftLegDamage = (1 - GetGroupHealthScaled(ECharacterHitZoneGroup.LEFTLEG));
+			
+			float rightLegDamage;
+			if (GetGroupTourniquetted(ECharacterHitZoneGroup.RIGHTLEG))
+				rightLegDamage = TOURNIQUETTED_LEG_DAMAGE;			
+			else
+				rightLegDamage = (1 - GetGroupHealthScaled(ECharacterHitZoneGroup.RIGHTLEG));
+
+			float legDamage = (leftLegDamage + rightLegDamage) * 0.5;
+			SetMovementDamage( legDamage );
+		}
+
+		if (hitZoneGroup == ECharacterHitZoneGroup.LEFTARM || hitZoneGroup == ECharacterHitZoneGroup.RIGHTARM)
+		{
+			float leftArmDamage;
+			if (GetGroupTourniquetted(ECharacterHitZoneGroup.LEFTARM))
+				leftArmDamage = TOURNIQUETTED_ARMS_DAMAGE;			
+			else
+				leftArmDamage = (1 - GetGroupHealthScaled(ECharacterHitZoneGroup.LEFTARM));
+
+			float rightArmDamage;
+			if (GetGroupTourniquetted(ECharacterHitZoneGroup.RIGHTARM))
+				rightArmDamage = TOURNIQUETTED_ARMS_DAMAGE;
+			else
+				rightArmDamage = (1 - GetGroupHealthScaled(ECharacterHitZoneGroup.RIGHTARM));
+
+			float armDamage = (leftArmDamage + rightArmDamage) * 0.5;
+			SetAimingDamage(armDamage * AIMING_DAMAGE_MULTIPLIER);
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	/*! Determine which hitZones group is taking highest DOT
+	\param damageTypes Which damagetype will be checked on the hitZones for highest damage amount
+	\param onlyExtremities Only compare the 4 extremities (both arms, both legs)
+	\param ignoreTQdHitZones Ignore tourniquetted limbs when looking for the one most bleeding one
+	*/
+	ECharacterHitZoneGroup GetCharMostDOTHitzoneGroup(EDamageType damageType, bool onlyExtremities = false, bool ignoreTQdHitZones = false, bool ignoreIfBeingTreated = false)
+	{
+		if (!m_aBleedingHitZones)
+			return null;
+
+		array<float> DOTValues = {};
+		typename groupEnum = ECharacterHitZoneGroup;
+		int groupCount = groupEnum.GetVariableCount();
+
+		for (int i; i < groupCount; i++)
+			DOTValues.Insert(0);
+
+		float highestDOT;
+		array<HitZone> hitZones = {}; 
+		
+		GetPhysicalHitZones(hitZones);
+		SCR_CharacterHitZone charHitZone;
+		ECharacterHitZoneGroup group;
+		
+		foreach (HitZone hitZone : hitZones)
+		{
+			charHitZone = SCR_CharacterHitZone.Cast(hitZone);
+			if (!charHitZone)
+				continue;
+		
+			// Virtual hitZones don't count to the accumulation of bleedings
+			group = charHitZone.GetHitZoneGroup();
+			if (group == EHitZoneGroup.VIRTUAL)
+				continue;
+			
+			// If only extremities are desired for checking, continue if group is not an extremity
+			if (onlyExtremities && !EXTREMITY_LIMB_GROUPS.Contains(group))
+				continue;
+			
+			float DOT = charHitZone.GetHitZoneDamageOverTime(EDamageType.BLEEDING);
+			if (DOT == 0)
+				continue;
+			
+			// GetHitZoneBleedingDPS() is unaware of tourniquet status, so it is reduced seperately here.
+			if (GetGroupTourniquetted(group))
+			{
+				DOT *= m_fTourniquetStrengthMultiplier;
+				if (ignoreTQdHitZones)
+				{
+					DOTValues[LIMB_GROUPS.Find(group)] = 0;
+					continue;
+				}
+			}
+			
+			// if desired, bleedingHitzones that are being treated are skipped so another hitZone will be healed by this inquiry
+			if (GetGroupIsBeingHealed(group))
+			{
+				if (ignoreIfBeingTreated)
+				{
+					DOTValues[LIMB_GROUPS.Find(group)] = 0;
+					continue;
+				}
+			}
+			
+			DOTValues[LIMB_GROUPS.Find(group)] = DOTValues[LIMB_GROUPS.Find(group)] + DOT;
+		}
+		
+		ECharacterHitZoneGroup mostDOTHitZoneGroup;
+		
+		for (int i; i < groupCount; i++)
+		{
+			if (DOTValues[i] > highestDOT)
+			{
+				highestDOT = DOTValues[i];
+				mostDOTHitZoneGroup = i;
+			}
+		}
+		
+		return LIMB_GROUPS.Get(mostDOTHitZoneGroup);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Get bone name for given hz group
+	string GetBoneName(ECharacterHitZoneGroup hzGroup)
+	{
+		switch (hzGroup)
+		{
+			case ECharacterHitZoneGroup.HEAD:
+			{
+				return "Head";
+			} break;
+
+			case ECharacterHitZoneGroup.UPPERTORSO:
+			{
+				return "Spine5";
+			} break;
+
+			case ECharacterHitZoneGroup.LOWERTORSO:
+			{
+				return "Spine1";
+			} break;
+
+			case ECharacterHitZoneGroup.LEFTARM:
+			{
+				return "LeftForeArm";
+			} break;
+
+			case ECharacterHitZoneGroup.RIGHTARM:
+			{
+				return "RightForeArm";
+			} break;
+
+			case ECharacterHitZoneGroup.LEFTLEG:
+			{
+				return "LeftKnee";
+			} break;
+
+			case ECharacterHitZoneGroup.RIGHTLEG:
+			{
+				return "RightKnee";
+			}
+		}
+
+		return string.Empty;
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	override void OnPostInit(IEntity owner)
+	{
+		super.OnPostInit(owner);
+		m_CommunicationSound = SCR_CommunicationSoundComponent.Cast(owner.FindComponent(SCR_CommunicationSoundComponent));
+		
+		// CallLater because GetOwner().GetPhysics() returns empty until GC finishes onPostInit
+		Physics physics = owner.GetPhysics();
+		GetGame().GetCallqueue().CallLater(SetExactMinImpulse, param1:owner);
+		
+#ifdef ENABLE_DIAG
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_LOG_PLAYER_DAMAGE,"","Log player damage","GameCode");
+		
+		if (System.IsCLIParam("logPlayerDamage"))
+			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_LOG_PLAYER_DAMAGE, true);
+#endif
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RegenPhysicalHitZones(bool skipRegenDelay = false)
+	{
+		SCR_PhysicalHitZonesRegenDamageEffect regen = new SCR_PhysicalHitZonesRegenDamageEffect();
+		
+		regen.SetInstigator(Instigator.CreateInstigator(GetOwner()));
+		regen.SetAffectedHitZone(GetDefaultHitZone());
+		regen.SetDPS(m_fRegenScale);
+		regen.SetDamageType(EDamageType.REGENERATION);
+		regen.SkipRegenDelay(skipRegenDelay);
+		AddDamageEffect(regen);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	void RegenVirtualHitZone(SCR_RegeneratingHitZone targetHitZone, float dps = -1, bool skipRegenDelay = false)
+	{
+		if (!targetHitZone)
+			return;
+		
+		if (IsDamageEffectPresentOnHitZones(SCR_PassiveHitZoneRegenDamageEffect, {targetHitZone}))
+			return;
+		
+		SCR_PassiveHitZoneRegenDamageEffect regen = new SCR_PassiveHitZoneRegenDamageEffect();
+		
+		regen.SetInstigator(Instigator.CreateInstigator(GetOwner()));
+		regen.SetAffectedHitZone(targetHitZone);
+		regen.SetDPS(dps);
+		regen.SetDamageType(EDamageType.REGENERATION);
+		regen.SkipRegenDelay(skipRegenDelay);
+		AddDamageEffect(regen);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetExactMinImpulse(IEntity owner)
+	{
+		if (!owner)
+			return;
+		
+		m_fMinImpulse = 80;
+		Physics physics = owner.GetPhysics();
+		if (physics)
+			m_fMinImpulse = physics.GetMass();
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	protected void OnWaterEnter()
+	{
+		Physics physics = GetOwner().GetPhysics();
+		if (!physics)
+			return;
+
+		// Don't try to apply waterFallDamage when going less than X m/s. Only consider vertical speed
+		vector totalVelocity = physics.GetVelocity();
+		if (Math.AbsFloat(totalVelocity[1]) < m_fMinWaterFallDamageVelocity)
+			return;
+		
+		vector ownerTransform[4];
+		physics.GetDirectWorldTransform(ownerTransform);
+		
+		m_fHighestContact = totalVelocity.Length() * m_fWaterFallDamageMultiplier;
+		CalculateCollisionDamage(GetOwner(), null, ownerTransform[3], false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Filter out any contacts under a reasonable speed for damage
+	override bool FilterContact(IEntity owner, IEntity other, Contact contact)
+	{
+		if (Math.AbsFloat(contact.GetRelativeNormalVelocityBefore()) > 3)
+		{
+			// Do not recompute collisiondamage within the impulseDelay if it's lower than the highest one thus far
+			float relativeNormalVelocityBefore = Math.AbsFloat(contact.GetRelativeNormalVelocityBefore());
+			if (m_fHighestContact > relativeNormalVelocityBefore)
+				return false;
+		
+			m_fHighestContact = relativeNormalVelocityBefore;
+			return super.FilterContact(owner, other, contact);
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Calculate damage from collision event based on contact data
+	//! \param owner Owner is entity that is parent of this damageManager
+	//! \param other Other is the entity that collided with the owner
+	//! \param contact Contact data class should contain all collisiondata needed to compute damage
+	override protected void OnFilteredContact(IEntity owner, IEntity other, Contact contact)
+	{
+		CalculateCollisionDamage(owner, other, contact.Position);
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//
+	protected void CalculateCollisionDamage(IEntity owner, IEntity other, vector collisionPosition, bool instantUnconsciousness = true)
+	{
+		if (instantUnconsciousness)
+			ForceUnconsciousness(GetResilienceHitZone().GetDamageStateThreshold(ECharacterDamageState.STATE3));
+		
+		float momentumCharacterThreshold = m_fMinImpulse * 1 * Physics.KMH2MS;
+		float momentumCharacterDestroy = m_fMinImpulse * 100 * Physics.KMH2MS;
+		float damageScaleToCharacter = (momentumCharacterDestroy - momentumCharacterThreshold) * 0.0001;
+		
+		float impactMomentum = Math.AbsFloat(m_fMinImpulse * m_fHighestContact);
+		
+		float damageValue = damageScaleToCharacter * (impactMomentum - momentumCharacterThreshold);
+		if (damageValue <= 0)
+			return;
+		
+		// We apply the collisiondamage only every 200 ms at most. 
+		// If a bigger collision happens within this time, this collisions Contact data will overwrite the previous collision, but does not reset the remaining time until it is applied.
+		const int impulseDelay = 200;
+		int remainingTime = GetGame().GetCallqueue().GetRemainingTime(ApplyCollisionDamage);
+		if (remainingTime == -1)
+		{
+			GetGame().GetCallqueue().CallLater(ApplyCollisionDamage, impulseDelay, false, other, collisionPosition, damageValue);
+		}
+		else
+		{
+			GetGame().GetCallqueue().Remove(ApplyCollisionDamage);
+			GetGame().GetCallqueue().CallLater(ApplyCollisionDamage, remainingTime, false, other, collisionPosition, damageValue);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleFallDamage(float damage)
+	{
+		array<HitZone> targetHitZones = {};
+		GetHitZonesOfGroup(ECharacterHitZoneGroup.LEFTLEG, targetHitZones, true);
+		GetHitZonesOfGroup(ECharacterHitZoneGroup.RIGHTLEG, targetHitZones, false);
+		
+		if (targetHitZones.IsEmpty())
+			return;
+		
+		const float overDamageCutOff = 50;
+		if (damage > overDamageCutOff)
+			GetHitZonesOfGroup(ECharacterHitZoneGroup.LOWERTORSO, targetHitZones, false);
+		
+		damage *= 2;
+		vector hitPosDirNorm[3];
+		SCR_DamageContext context = new SCR_DamageContext(EDamageType.COLLISION, damage/targetHitZones.Count(), hitPosDirNorm, GetOwner(), null, Instigator.CreateInstigator(GetOwner()), null, -1, -1);
+		
+		foreach (HitZone hitZone : targetHitZones)
+		{
+			context.struckHitZone = hitZone;
+			HandleDamage(context);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ApplyCollisionDamage(IEntity other, vector collisionPosition, float damageValue)
+	{
+		if (!GetOwner())
+			return;
+		
+		array<HitZone> characterHitZones = {};
+		GetAllHitZones(characterHitZones);
+		
+		// Apply collisionDamage only to the 6 nearest hitzones to the contactpoint
+		const int hitZonesReturnAmount = 6;
+		GetNearestHitZones(collisionPosition, characterHitZones, hitZonesReturnAmount);
+		
+		Vehicle vehicle = Vehicle.Cast(other);
+		if (vehicle && vehicle.GetPilot())
+			other = vehicle.GetPilot();
+		
+		vector hitPosDirNorm[3];
+		SCR_DamageContext context = new SCR_DamageContext(EDamageType.COLLISION, damageValue/hitZonesReturnAmount, hitPosDirNorm, GetOwner(), characterHitZones[0], Instigator.CreateInstigator(other), null, -1, -1);
+		
+		foreach (HitZone characterHitZone : characterHitZones)
+		{
+			if (characterHitZone.GetDamageState() == EDamageState.DESTROYED)
+				continue;
+			
+			context.struckHitZone = characterHitZone;
+			HandleDamage(context);
+		}
+		
+		m_fHighestContact = 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get nearest hitZones to the point of impact
+	//! \param worldPosition Position of the point of impact
+	//! \param[inout] nearestHitZones Array of hitZones which colliders' positions will be compared with worldPosition. Returns the nearest hitZones to worldPosition in descending order of distance
+	//! \param hitZonesReturnAmount Amount of hitZones that are returned in nearestHitZones. IF all are wanted, set nearestHitZones.Count().
+	void GetNearestHitZones(vector worldPosition, notnull inout array<HitZone> nearestHitZones, int hitZonesReturnAmount)
+	{
+		array<vector> colliderDistances  = {};
+		array<int> IDs = {};
+		Physics physics = GetOwner().GetPhysics();
+		
+		vector colliderTransform[4];
+		vector relativePosition;
+		vector colliderDistance;
+		
+		foreach (HitZone hitZone : nearestHitZones)
+		{
+			if (!hitZone.HasColliderNodes())
+				continue;
+			
+			IDs.Clear();
+			hitZone.GetColliderIDs(IDs);
+			foreach (int ID : IDs)
+			{
+				physics.GetGeomWorldTransform(ID, colliderTransform);
+				relativePosition = worldPosition - colliderTransform[3];
+				colliderDistance = {relativePosition.LengthSq(), ID, 0};
+				colliderDistances.Insert(colliderDistance);
+			}
+		}
+		
+		// Order colliderDistances by distance from close to furthest
+		colliderDistances.Sort();
+		
+		array<int> closestIDs = {};
+		for (int i; i < hitZonesReturnAmount; i++)
+		{
+			closestIDs.InsertAt(colliderDistances[i][1], i);
+		}
+		
+		nearestHitZones.Clear();
+		GetHitZonesByColliderIDs(nearestHitZones, closestIDs);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called whenever an instigator is going to be set.
+	protected override bool ShouldOverrideInstigator(notnull Instigator currentInstigator, notnull Instigator newInstigator)
+	{
+		//If the new instigator is self and owner is unconscious, don't override it. Instigator remains cause of unconsciousness.
+		if (newInstigator.GetInstigatorEntity() == GetOwner())
+		{
+			ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+			if (character && character.GetCharacterController().GetLifeState() == ECharacterLifeState.INCAPACITATED)
+				return false;
+		}
+		
+		return super.ShouldOverrideInstigator(currentInstigator, newInstigator);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!	Invoked when damage state changes.
+	protected override void OnDamageStateChanged(EDamageState state)
+	{
+		super.OnDamageStateChanged(state);
+		
+		if (state == EDamageState.UNDAMAGED)
+			TryClearDamageHistory();
+		else if (state == EDamageState.DESTROYED)
+			ClearDamageHistory();
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	protected override void OnDamage(notnull BaseDamageContext damageContext)
+	{		
+		super.OnDamage(damageContext);
+
+		if (damageContext.damageValue > 0)
+			RegenPhysicalHitZones();
+
+		#ifdef ENABLE_DIAG	
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_LOG_PLAYER_DAMAGE))
+		{
+			SCR_HitZone scriptedHz = SCR_HitZone.Cast(damageContext.struckHitZone);
+			if (!scriptedHz)
+				return;
+
+			IEntity hzOwner = scriptedHz.GetOwner();
+			if (!hzOwner)
+				return;
+			
+			string instigatorName;
+			int instigatorID = damageContext.instigator.GetInstigatorPlayerID();
+			IEntity instigatorEntity = damageContext.instigator.GetInstigatorEntity();
+			
+			if (instigatorID > 0)
+			{
+				instigatorName = GetGame().GetPlayerManager().GetPlayerName(instigatorID);
+			}
+			else
+			{
+				ResourceName prefabName;
+				if (instigatorEntity)
+				{
+					EntityPrefabData prefabData = instigatorEntity.GetPrefabData();
+					if (prefabData)
+						prefabName = prefabData.GetPrefabName();
+				}
+				
+				if (prefabName.IsEmpty())
+				{
+					if (instigatorEntity)
+					{
+						instigatorName = ((instigatorEntity.GetID()).ToString());
+					}
+					else
+					{
+						instigatorName = instigatorEntity.ToString();
+					}
+				}
+				else
+				{
+					TStringArray strs = new TStringArray;
+					prefabName.Split("/", strs, true);
+					instigatorName = ((instigatorEntity.GetID()).ToString()) + strs[strs.Count() - 1];
+				}
+			}
+			
+			string hzOwnerName;
+			int hzOwnerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(hzOwner);
+			if (hzOwnerID > 0)
+			{
+				hzOwnerName = GetGame().GetPlayerManager().GetPlayerName(hzOwnerID);
+			}
+			else
+			{
+				EntityPrefabData prefabData = hzOwner.GetPrefabData();
+				ResourceName prefabName = prefabData.GetPrefabName();
+				
+				if (prefabName.IsEmpty())
+				{
+					hzOwnerName = ((hzOwner.GetID()).ToString());
+				}
+				else
+				{
+					TStringArray strs = new TStringArray;
+					prefabName.Split("/", strs, true);
+					hzOwnerName = ((hzOwner.GetID()).ToString()) + strs[strs.Count() - 1];
+				}
+			}
+			
+			if (EntityUtils.IsPlayer(instigatorEntity) || EntityUtils.IsPlayer(hzOwner))
+				PrintFormat("HIT LOG: (%1) damaged (%2) - [Damage = %3, Speed = %4]", instigatorName, hzOwnerName, damageContext.damageValue, damageContext.impactVelocity);
+		}
+		#endif
+	}
+	#ifdef ENABLE_DIAG	
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromDiagSystem(owner);
+		
+		super.OnDelete(owner);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	void DiagInit(IEntity owner)
+	{
+		ConnectToDiagSystem(owner);
+		// Register to debug menu
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_DAMAGE,"","Deal damage debug","Character");
+		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_DAMAGE,0);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	override void OnDiag(IEntity owner, float timeSlice)
+	{
+		ProcessDebug(owner);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ProcessDebug(IEntity owner)
+	{
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_DAMAGE))
+		{
+			// Only apply debug damages to currently controlled character
+			IEntity playerEntity = GetGame().GetPlayerController().GetControlledEntity();
+			if (playerEntity != owner)
+				return;
+			
+			DbgUI.Text("See: GameCode >> Hit Zones >> Player HitZones for damages");
+			DbgUI.Text("Applying damage from client is NOT possible");
+			DbgUI.Text("Only conventional DOT damage are shown in debug");
+			DbgUI.Text("Y to damage every hitZone for 4 damage");
+			DbgUI.Text("U to reduce chest health by 10");
+			DbgUI.Text("I to reduce right thigh health by 10");
+			DbgUI.Text("O to reduce left thigh health by 10");
+			DbgUI.Text("P to add bleeding to right thigh");
+			DbgUI.Text("T to add bleeding to left thigh");
+			DbgUI.Text("K to reset damage effect");
+		
+			vector hitPosDirNorm[3];
+			
+			if (Debug.KeyState(KeyCode.KC_Y))
+			{
+				Debug.ClearKey(KeyCode.KC_Y);
+				AddParticularBleeding("RThigh", intensityFloat: Math.RandomFloat(0.9, 0.99));
+				AddParticularBleeding("LThigh", intensityFloat: Math.RandomFloat(0.9, 0.99));
+				AddParticularBleeding("Chest", intensityFloat: Math.RandomFloat(0.9, 0.99));
+				AddParticularBleeding("Head", intensityFloat: Math.RandomFloat(0.9, 0.99));
+				AddParticularBleeding("LArm", intensityFloat: Math.RandomFloat(0.9, 0.99));
+				AddParticularBleeding("Abdomen", intensityFloat: Math.RandomFloat(0.9, 0.99));
+				AddParticularBleeding("RArm", intensityFloat: Math.RandomFloat(0.9, 0.99));
+			}
+			if (Debug.KeyState(KeyCode.KC_U))
+			{
+				Debug.ClearKey(KeyCode.KC_U);
+				Print(HealHitZones(10, false, true));	
+			}
+			if (Debug.KeyState(KeyCode.KC_I))
+			{
+				Debug.ClearKey(KeyCode.KC_I);
+				
+				SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), GetHitZoneByName("RThigh"), Instigator.CreateInstigator(GetGame().GetPlayerController().GetControlledEntity()), null, -1, -1);
+				HandleDamage(damageContext);
+			}
+			if (Debug.KeyState(KeyCode.KC_O))
+			{
+				Debug.ClearKey(KeyCode.KC_O);
+				
+				SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), GetHitZoneByName("LThigh"), Instigator.CreateInstigator(GetGame().GetPlayerController().GetControlledEntity()), null, -1, -1);
+				HandleDamage(damageContext);
+			}
+			if (Debug.KeyState(KeyCode.KC_P))
+			{
+				Debug.ClearKey(KeyCode.KC_P);
+				AddParticularBleeding("RThigh");
+			}
+			if (Debug.KeyState(KeyCode.KC_T))
+			{
+				Debug.ClearKey(KeyCode.KC_T);
+				AddParticularBleeding("LThigh");
+			}
+			if (Debug.KeyState(KeyCode.KC_K))
+			{
+				Debug.ClearKey(KeyCode.KC_K);
+				FullHeal();
+			}
+		}
+	}
+#endif
+};
+
+
